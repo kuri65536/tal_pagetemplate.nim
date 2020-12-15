@@ -24,7 +24,7 @@ proc debg(msg: string): void =
 type
   Attrs = Table[string, string]
 
-  TagProcess {.size: sizeof(cint).}= enum
+  TagProcess {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
 
@@ -48,14 +48,22 @@ proc is_true(src: string): bool =  # {{{1
     return false
 
 
+proc check(self: set[TagProcess], flags: set[TagProcess]): bool =  # {{{1
+    return self * flags != {}
+
+
+proc check_current(self: LocalParser, flags: set[TagProcess]): bool =  # {{{1
+    if len(self.stacks) < 1:
+        return false
+    return self.stacks[0].flags.check(flags)
+
+
 proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     let fmt = "<$1>"
     debg(fmt"start_tag: {tag.attrs}")
     var attrs = tag.attrs
-    if tag.flags.contains(tag_in_replace):
-        return ""  # in replace
-    if tag.flags.contains(tag_in_content):
-        return ""  # in content
+    if tag.flags.check({tag_in_replace, tag_in_content}):
+        return ""  # in replace or in content
     if len(attrs) < 1:
         return fmt.replace("$1", tag.elem)
 
@@ -88,17 +96,13 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1
-    if len(self.stacks) < 1:
-        discard
-    elif self.stacks[0].flags.contains(tag_in_replace):
+    if self.check_current({tag_in_replace}):
         return ""
     return "</" & name & ">"
 
 
 proc data(self: var LocalParser, content: string): string =  # {{{1
-    if len(self.stacks) < 1:
-        discard
-    if self.stacks[0].flags * {tag_in_replace, tag_in_content} != {}:
+    if self.check_current({tag_in_replace, tag_in_content}):
         return ""
     return content
 
@@ -109,9 +113,7 @@ proc through(self: var LocalParser, src: string): string =  # {{{1
 
 proc parse_tag(self: var LocalParser, name: string, f_open: bool  # {{{1
                ): string =
-    if len(self.stacks) < 1:
-        discard
-    elif self.stacks[0].flags * {tag_in_replace, tag_in_content} != {}:
+    if self.check_current({tag_in_replace, tag_in_content}):
         return ""
 
     var stack = TagStack(elem: name)
@@ -155,7 +157,7 @@ proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
 
 proc parse_tree(src: Stream, filename: string,  # {{{1
                 fn_expr: proc(expr: string): string
-                ): iterator(): string =  # {{{1
+                ): iterator(): string =
     iterator ret(): string =
         var parser = LocalParser(fn_expr: fn_expr)
         var x: XmlParser

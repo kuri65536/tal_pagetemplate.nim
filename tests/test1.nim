@@ -53,9 +53,13 @@ test "T2-3-1: can parse tal:omit-tag":  # {{{1
     check parse_all(fp) == ""
 
 
-test "T2-3-2: can parse tal:omit-tag 2":  # {{{1
+test "T2-3-2: can parse tal:omit-tag 2 - nested":  # {{{1
     var fp = newStringStream("<a tal:omit-tag=\"\">this<b></b></a>")
     check parse_all(fp) == ""
+
+    fp = newStringStream("<a tal:omit-tag=\"\">this<b></b><c a=\"2\"></c></a>")
+    check parse_all(fp) == ""
+
 
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap
