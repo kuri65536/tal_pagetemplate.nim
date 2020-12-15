@@ -17,6 +17,10 @@ import tables
 import typeinfo
 
 
+proc debg(msg: string): void =
+    discard
+
+
 type
   Attrs = Table[string, string]
 
@@ -24,11 +28,14 @@ type
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
 
+  TagStack = ref object of RootObj  # {{{1
+    elem: string
+    attrs: Attrs
+    flags: set[TagProcess]
+
   LocalParser = ref object of RootObj  # {{{1
     fn_expr: proc(expr: string): string
-    elem: string
-    stack_attrs: seq[Attrs]
-    stack_flags: seq[set[TagProcess]]
+    stacks: seq[TagStack]
 
 
 proc is_true(src: string): bool =  # {{{1
@@ -41,36 +48,36 @@ proc is_true(src: string): bool =  # {{{1
     return false
 
 
-proc start_tag(self: var LocalParser, name: string,  # {{{1
-               flags: set[TagProcess], attrs: Attrs): string =
+proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     let fmt = "<$1>"
-    echo(fmt"start_tag: {attrs}")
-    if len(attrs) < 1:
-        return fmt.replace("$1", name)
-    if flags.contains(tag_in_replace):
+    debg(fmt"start_tag: {tag.attrs}")
+    var attrs = tag.attrs
+    if tag.flags.contains(tag_in_replace):
         return ""  # in replace
-    if flags.contains(tag_in_content):
+    if tag.flags.contains(tag_in_content):
         return ""  # in content
+    if len(attrs) < 1:
+        return fmt.replace("$1", tag.elem)
 
     # TODO(shimoda): parse orders, fit to official
     var sfx = ""
     if attrs.hasKey("tal:replace"):
-        self.stack_flags[0].incl(tag_in_replace)
+        tag.flags.incl(tag_in_replace)
         var expr = attrs["tal:replace"]
         return self.fn_expr(expr)
     if attrs.hasKey("tal:content"):
-        self.stack_flags[0].incl(tag_in_content)
+        tag.flags.incl(tag_in_content)
         var expr = attrs["tal:content"]
         sfx = self.fn_expr(expr)
     if attrs.hasKey("tal:omit-tag"):
         var expr = attrs["tal:omit-tag"]
         expr = self.fn_expr(expr)
         if expr == "" or is_true(expr):
-            self.stack_flags[0].incl(tag_in_replace)
+            self.stacks[0].flags.incl(tag_in_replace)
             return ""
 
-    echo(fmt"start_tag: {attrs}")
-    var tag = fmt.replace("$1>", name)
+    debg(fmt"start_tag: {attrs}")
+    var tag = fmt.replace("$1>", tag.elem)
     var flags = 0
     for k, v in attrs.pairs():
         if k == "tal:content":
@@ -81,15 +88,17 @@ proc start_tag(self: var LocalParser, name: string,  # {{{1
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1
-    if self.stack_flags[0].contains(tag_in_replace):
+    if len(self.stacks) < 1:
+        discard
+    elif self.stacks[0].flags.contains(tag_in_replace):
         return ""
     return "</" & name & ">"
 
 
 proc data(self: var LocalParser, content: string): string =  # {{{1
-    if self.stack_flags[0].contains(tag_in_replace):
-        return ""
-    if self.stack_flags[0].contains(tag_in_content):
+    if len(self.stacks) < 1:
+        discard
+    if self.stacks[0].flags * {tag_in_replace, tag_in_content} != {}:
         return ""
     return content
 
@@ -100,40 +109,47 @@ proc through(self: var LocalParser, src: string): string =  # {{{1
 
 proc parse_tag(self: var LocalParser, name: string, f_open: bool  # {{{1
                ): string =
-    self.elem = name
+    if len(self.stacks) < 1:
+        discard
+    elif self.stacks[0].flags * {tag_in_replace, tag_in_content} != {}:
+        return ""
+
+    var stack = TagStack(elem: name)
     var new_flags: set[TagProcess]
-    if len(self.stack_flags) > 0:
-        var prev_flags = self.stack_flags[0]
+    if len(self.stacks) > 0:
+        var prev_flags = self.stacks[0].flags
         if prev_flags.contains(tag_in_replace):
             new_flags = {}
-    self.stack_flags.insert(new_flags, 0)
-    self.stack_attrs.insert(initTable[string, string](), 0)
+    stack.flags = {}
+    stack.attrs = initTable[string, string]()
+    self.stacks.insert(stack, 0)
     if not f_open:
-        return self.start_tag(name, self.stack_flags[0], self.stack_attrs[0])
+        return self.start_tag(self.stacks[0])
     return ""  # wait for close
 
 
 proc parse_tagclose(self: var LocalParser): string =  # {{{1
-    echo(fmt"found '>' for {self.elem}")
-    var attrs = self.stack_attrs[0]
-    return self.start_tag(self.elem, self.stack_flags[0], attrs)
+    debg(fmt"found '>' for {self.stacks[0].elem}")
+    return self.start_tag(self.stacks[0])
 
 
 proc parse_attr(self: var LocalParser, name, value: string): string =  # {{{1
-    self.stack_attrs[0].add(name, value)
+    self.stacks[0].attrs.add(name, value)
     #[
     var attrs = self.stack_attrs[0]
     attrs.add(name, value)
     echo(fmt"found attr {attrs}")
     ]#
-    echo(fmt"found attr {self.stack_attrs[0]}")
+    debg(fmt"found attr {self.stacks[0].attrs}")
     return ""  # wait for close
 
 
 proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
     var ret = self.end_tag(name)
-    self.stack_flags.delete(0)
-    self.stack_attrs.delete(0)
+    if len(self.stacks) < 1:
+        discard
+    elif self.stacks[0].elem == name:
+        self.stacks.delete(0)
     return ret
 
 

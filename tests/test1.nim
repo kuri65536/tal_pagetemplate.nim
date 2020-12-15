@@ -43,7 +43,7 @@ test "T2-1-1: can parse tal:replace":  # {{{1
     check parse_all(fp) == "1"
 
 
-test "T2-2-1: can parse tal:replace":  # {{{1
+test "T2-2-1: can parse tal:content":  # {{{1
     var fp = newStringStream("<a tal:content=\"1\">this</a>")
     check parse_all(fp) == "<a>1</a>"
 
@@ -52,6 +52,10 @@ test "T2-3-1: can parse tal:omit-tag":  # {{{1
     var fp = newStringStream("<a tal:omit-tag=\"\">this</a>")
     check parse_all(fp) == ""
 
+
+test "T2-3-2: can parse tal:omit-tag 2":  # {{{1
+    var fp = newStringStream("<a tal:omit-tag=\"\">this<b></b></a>")
+    check parse_all(fp) == ""
 
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap
