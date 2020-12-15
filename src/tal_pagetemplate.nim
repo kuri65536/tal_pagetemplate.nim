@@ -20,11 +20,15 @@ import typeinfo
 type
   Attrs = Table[string, string]
 
+  TagProcess {.size: sizeof(cint).}= enum
+    tag_in_replace   # replace whole tag with content or expr.
+    tag_in_content   # replace content with expr
+
   LocalParser = ref object of RootObj  # {{{1
     fn_expr: proc(expr: string): string
     elem: string
     stack_attrs: seq[Attrs]
-    stack_flags: seq[int]
+    stack_flags: seq[set[TagProcess]]
 
 
 proc is_true(src: string): bool =  # {{{1
@@ -38,28 +42,34 @@ proc is_true(src: string): bool =  # {{{1
 
 
 proc start_tag(self: var LocalParser, name: string,  # {{{1
-               attrs: Attrs): string =
+               flags: set[TagProcess], attrs: Attrs): string =
     let fmt = "<$1>"
+    echo(fmt"start_tag: {attrs}")
     if len(attrs) < 1:
         return fmt.replace("$1", name)
-    var cur_flags = self.stack_flags[0]
-    if (cur_flags and 1) != 0:
+    if flags.contains(tag_in_replace):
         return ""  # in replace
-    if (cur_flags and 2) != 0:
+    if flags.contains(tag_in_content):
         return ""  # in content
 
-    # TODO(shimoda): parse order to official
+    # TODO(shimoda): parse orders, fit to official
+    var sfx = ""
     if attrs.hasKey("tal:replace"):
-        self.stack_flags.insert(0, 1)
+        self.stack_flags[0].incl(tag_in_replace)
         var expr = attrs["tal:replace"]
         return self.fn_expr(expr)
+    if attrs.hasKey("tal:content"):
+        self.stack_flags[0].incl(tag_in_content)
+        var expr = attrs["tal:content"]
+        sfx = self.fn_expr(expr)
     if attrs.hasKey("tal:omit-tag"):
         var expr = attrs["tal:omit-tag"]
         expr = self.fn_expr(expr)
         if expr == "" or is_true(expr):
-            self.stack_flags.insert(0, 1)
+            self.stack_flags[0].incl(tag_in_replace)
             return ""
 
+    echo(fmt"start_tag: {attrs}")
     var tag = fmt.replace("$1>", name)
     var flags = 0
     for k, v in attrs.pairs():
@@ -67,14 +77,20 @@ proc start_tag(self: var LocalParser, name: string,  # {{{1
             flags = flags or 2
             continue
         tag = tag & fmt" {k}=" & "\"" & fmt"{v}" & "\""
-    return tag
+    return tag & ">" & sfx
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1
+    if self.stack_flags[0].contains(tag_in_replace):
+        return ""
     return "</" & name & ">"
 
 
 proc data(self: var LocalParser, content: string): string =  # {{{1
+    if self.stack_flags[0].contains(tag_in_replace):
+        return ""
+    if self.stack_flags[0].contains(tag_in_content):
+        return ""
     return content
 
 
@@ -85,25 +101,38 @@ proc through(self: var LocalParser, src: string): string =  # {{{1
 proc parse_tag(self: var LocalParser, name: string, f_open: bool  # {{{1
                ): string =
     self.elem = name
+    var new_flags: set[TagProcess]
+    if len(self.stack_flags) > 0:
+        var prev_flags = self.stack_flags[0]
+        if prev_flags.contains(tag_in_replace):
+            new_flags = {}
+    self.stack_flags.insert(new_flags, 0)
     self.stack_attrs.insert(initTable[string, string](), 0)
     if not f_open:
-        return self.start_tag(name, self.stack_attrs[0])
+        return self.start_tag(name, self.stack_flags[0], self.stack_attrs[0])
     return ""  # wait for close
 
 
 proc parse_tagclose(self: var LocalParser): string =  # {{{1
-    var attrs = self.stack_attrs[^1]
-    return self.start_tag(self.elem, attrs)
+    echo(fmt"found '>' for {self.elem}")
+    var attrs = self.stack_attrs[0]
+    return self.start_tag(self.elem, self.stack_flags[0], attrs)
 
 
 proc parse_attr(self: var LocalParser, name, value: string): string =  # {{{1
-    var attrs = self.stack_attrs[^1]
+    self.stack_attrs[0].add(name, value)
+    #[
+    var attrs = self.stack_attrs[0]
     attrs.add(name, value)
+    echo(fmt"found attr {attrs}")
+    ]#
+    echo(fmt"found attr {self.stack_attrs[0]}")
     return ""  # wait for close
 
 
 proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
     var ret = self.end_tag(name)
+    self.stack_flags.delete(0)
     self.stack_attrs.delete(0)
     return ret
 
