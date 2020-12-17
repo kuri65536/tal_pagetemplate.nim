@@ -16,6 +16,12 @@ import strformat
 import tables
 import typeinfo
 
+when false:
+    import ./tal_expr
+else:
+    import ./tal_expr_json
+import ./tal_repeat
+
 
 proc debg(msg: string): void =
     discard
@@ -27,11 +33,24 @@ type
   TagProcess {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
+    tag_in_repeat    # repeat elements by args.
+
+  TagRepeat0 = ref object of RootObj  # {{{1
+    elem, sfx: string
+    attrs: Attrs
+    children: seq[TagRepeat0]
+
+  TagRepeat = ref object of RootObj  # {{{1
+    name: string
+    expr: string
+    xml: TagRepeat0
 
   TagStack = ref object of RootObj  # {{{1
     elem: string
     attrs: Attrs
     flags: set[TagProcess]
+    repeat: TagRepeat
+
 
   LocalParser = ref object of RootObj  # {{{1
     fn_expr: proc(expr: string): string
@@ -58,14 +77,54 @@ proc check_current(self: LocalParser, flags: set[TagProcess]): bool =  # {{{1
     return self.stacks[0].flags.check(flags)
 
 
+proc parse_repeat(src: string): TagRepeat =  # {{{1
+    var ret = TagRepeat()
+    var (name, expr) = ("", "")
+    for i in src.strip().split(" "):
+        if len(i) < 1:
+            continue
+        if len(name) < 1:
+            name = i
+        expr = expr & " " & i
+    if len(expr) > 0:
+        expr = expr[1 ..^ 1]  # remove left space.
+    ret.name = name
+    ret.expr = expr
+    return ret
+
+
+proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
+    let format = "<$1>"
+    if len(attrs) < 1:
+        return format.replace("$1", elem)
+    debg(fmt"start_tag: {attrs}")
+    var ret = format.replace("$1>", elem)
+    for k, v in attrs.pairs():
+        if k == "tal:content":
+            continue
+        if k == "tal:repeat":
+            continue
+        ret = ret & fmt" {k}=" & "\"" & fmt"{v}" & "\""
+    ret = ret & ">" & sfx
+    return ret
+
+
+proc render_repeat(src: seq[TagRepeat0], vars: RepeatVars): string =  # {{{1
+    var ret = ""
+    for i in src:
+        ret &= render_attrs(i.elem, "", i.attrs)
+        ret &= render_repeat(i.children, vars)
+        ret &= i.sfx
+    return ret
+
+
 proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
-    let fmt = "<$1>"
     debg(fmt"start_tag: {tag.attrs}")
     var attrs = tag.attrs
     if tag.flags.check({tag_in_replace, tag_in_content}):
         return ""  # in replace or in content
     if len(attrs) < 1:
-        return fmt.replace("$1", tag.elem)
+        return render_attrs(tag.elem, "", tag.attrs)
 
     # TODO(shimoda): parse orders, fit to official
     var sfx = ""
@@ -77,6 +136,9 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         tag.flags.incl(tag_in_content)
         var expr = attrs["tal:content"]
         sfx = self.fn_expr(expr)
+    if attrs.hasKey("tal:repeat"):
+        tag.flags.incl(tag_in_repeat)
+        tag.repeat = parse_repeat(attrs["tal:repeat"])
     if attrs.hasKey("tal:omit-tag"):
         var expr = attrs["tal:omit-tag"]
         expr = self.fn_expr(expr)
@@ -84,21 +146,24 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
             self.stacks[0].flags.incl(tag_in_replace)
             return ""
 
-    debg(fmt"start_tag: {attrs}")
-    var tag = fmt.replace("$1>", tag.elem)
-    var flags = 0
-    for k, v in attrs.pairs():
-        if k == "tal:content":
-            flags = flags or 2
-            continue
-        tag = tag & fmt" {k}=" & "\"" & fmt"{v}" & "\""
-    return tag & ">" & sfx
+    if not isNil(tag.repeat):
+        tag.repeat.xml = TagRepeat0(elem: tag.elem, attrs: attrs, sfx: sfx,
+                                    children: @[])
+        return ""
+    return render_attrs(tag.elem, sfx, tag.attrs)
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     if self.check_current({tag_in_replace}):
         return ""
-    return "</" & name & ">"
+    var ret = "</" & name & ">"
+    var stack = self.stacks[0]
+    if isNil(stack.repeat):
+        return ret
+    var tags = ""
+    for i in parse_repeat_seq(stack.repeat.expr):
+        tags &= render_repeat(@[stack.repeat.xml], i)
+    return tags
 
 
 proc data(self: var LocalParser, content: string): string =  # {{{1
@@ -116,7 +181,7 @@ proc parse_tag(self: var LocalParser, name: string, f_open: bool  # {{{1
     if self.check_current({tag_in_replace, tag_in_content}):
         return ""
 
-    var stack = TagStack(elem: name)
+    var stack = TagStack(elem: name, repeat: nil)
     var new_flags: set[TagProcess]
     if len(self.stacks) > 0:
         var prev_flags = self.stacks[0].flags

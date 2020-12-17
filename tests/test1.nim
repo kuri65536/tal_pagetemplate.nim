@@ -13,16 +13,21 @@ import unittest
 
 import tal_pagetemplate
 
+type
+  Vars = ref object of RootObj
+    repeat_src: seq[int]
+
 
 proc parse_all(fp: Stream): string =  # {{{1
-    var fn = parse_template(fp, "", nil)
+    var vars = Vars(repeat_src: @[1, 2, 3, 4, 5])
+    var fn = parse_template(fp, "", vars)
     var ret = ""
     while not finished(fn):
         ret &= fn()
     return ret
 
 
-test "T1-1-1: can parse notmal xml":  # {{{1
+test "T1-1-1: can parse normal xml":  # {{{1
     # check hierarch outputs
     var fp = newStringStream("<a>this</a>")
     check parse_all(fp) == "<a>this</a>"
@@ -59,6 +64,18 @@ test "T2-3-2: can parse tal:omit-tag 2 - nested":  # {{{1
 
     fp = newStringStream("<a tal:omit-tag=\"\">this<b></b><c a=\"2\"></c></a>")
     check parse_all(fp) == ""
+
+
+test "T2-4-1: can parse tal:repeat":  # {{{1
+    var fp = newStringStream("<a tal:repeat=\"i repeat_src\" " &
+                             "tal:content=\"repeat/i/number\">this</a>")
+    check parse_all(fp) == "<a>1</a><a>2</a><a>3</a><a>4</a><a>5</a>"
+
+
+test "T2-4-2: can parse tal:repeat 2 - various parameters":  # {{{1
+    var fp = newStringStream("<a tal:repeat=\"  i   repeat_src   \" " &
+                             "tal:content=\"repeat/i/number\">this</a>")
+    check parse_all(fp) == "<a>1</a><a>2</a><a>3</a><a>4</a><a>5</a>"
 
 
 # end of file {{{1
