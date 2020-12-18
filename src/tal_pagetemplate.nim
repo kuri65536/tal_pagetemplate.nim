@@ -54,6 +54,7 @@ type
 
   LocalParser = ref object of RootObj  # {{{1
     fn_expr: proc(expr: string): string
+    fn_repeat: proc(name, expr: string): iterator(): RepeatVars
     stacks: seq[TagStack]
 
 
@@ -81,13 +82,15 @@ proc parse_repeat(src: string): TagRepeat =  # {{{1
     var ret = TagRepeat()
     var (name, expr) = ("", "")
     for i in src.strip().split(" "):
-        if len(i) < 1:
+        if len(i) < 1:  # remove "a  b" -> "a b"
             continue
         if len(name) < 1:
             name = i
-        expr = expr & " " & i
+        else:
+            expr = expr & " " & i
     if len(expr) > 0:
         expr = expr[1 ..^ 1]  # remove left space.
+    # echo fmt"repeat -> {name}-{expr}"
     ret.name = name
     ret.expr = expr
     return ret
@@ -109,11 +112,22 @@ proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
     return ret
 
 
-proc render_repeat(src: seq[TagRepeat0], vars: RepeatVars): string =  # {{{1
+proc render_repeat(self: LocalParser, src: seq[TagRepeat0]): string =  # {{{1
     var ret = ""
     for i in src:
+        if i.attrs.hasKey("tal:replace"):
+            var expr = i.attrs["tal:replace"]
+            ret &= self.fn_expr(expr)
+            continue
+        if i.attrs.hasKey("tal:content"):
+            var expr = i.attrs["tal:content"]
+            ret &= render_attrs(i.elem, "", i.attrs)
+            ret &= self.fn_expr(expr)
+            ret &= "</" & i.elem & ">"
+            continue
+
         ret &= render_attrs(i.elem, "", i.attrs)
-        ret &= render_repeat(i.children, vars)
+        ret &= self.render_repeat(i.children)
         ret &= i.sfx
     return ret
 
@@ -127,6 +141,15 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         return render_attrs(tag.elem, "", tag.attrs)
 
     # TODO(shimoda): parse orders, fit to official
+    if attrs.hasKey("tal:repeat"):
+        var tmp = attrs
+        tmp.del("tal:repeat")
+        tag.flags.incl(tag_in_repeat)
+        tag.repeat = parse_repeat(attrs["tal:repeat"])
+        tag.repeat.xml = TagRepeat0(elem: tag.elem, attrs: tmp,
+                                    children: @[])
+        return ""
+
     var sfx = ""
     if attrs.hasKey("tal:replace"):
         tag.flags.incl(tag_in_replace)
@@ -136,9 +159,6 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         tag.flags.incl(tag_in_content)
         var expr = attrs["tal:content"]
         sfx = self.fn_expr(expr)
-    if attrs.hasKey("tal:repeat"):
-        tag.flags.incl(tag_in_repeat)
-        tag.repeat = parse_repeat(attrs["tal:repeat"])
     if attrs.hasKey("tal:omit-tag"):
         var expr = attrs["tal:omit-tag"]
         expr = self.fn_expr(expr)
@@ -146,10 +166,6 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
             self.stacks[0].flags.incl(tag_in_replace)
             return ""
 
-    if not isNil(tag.repeat):
-        tag.repeat.xml = TagRepeat0(elem: tag.elem, attrs: attrs, sfx: sfx,
-                                    children: @[])
-        return ""
     return render_attrs(tag.elem, sfx, tag.attrs)
 
 
@@ -160,14 +176,18 @@ proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     var stack = self.stacks[0]
     if isNil(stack.repeat):
         return ret
-    var tags = ""
-    for i in parse_repeat_seq(stack.repeat.expr):
-        tags &= render_repeat(@[stack.repeat.xml], i)
+    var (tags, iter) = ("", self.fn_repeat(stack.repeat.name, stack.repeat.expr))
+    var i = iter()
+    while not finished(iter):
+        tags &= self.render_repeat(@[stack.repeat.xml])
+        i = iter()
     return tags
 
 
 proc data(self: var LocalParser, content: string): string =  # {{{1
     if self.check_current({tag_in_replace, tag_in_content}):
+        return ""
+    if self.check_current({tag_in_repeat}):
         return ""
     return content
 
@@ -221,10 +241,12 @@ proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
 
 
 proc parse_tree(src: Stream, filename: string,  # {{{1
-                fn_expr: proc(expr: string): string
+                fn_expr: proc(expr: string): string,
+                fn_repeat: proc(name, expr: string): iterator(): RepeatVars
                 ): iterator(): string =
     iterator ret(): string =
-        var parser = LocalParser(fn_expr: fn_expr)
+        var parser = LocalParser(fn_expr: fn_expr,
+                                 fn_repeat: fn_repeat)
         var x: XmlParser
         open(x, src, "")
         defer: x.close()
@@ -257,16 +279,25 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
 
 
 proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
-                     ): iterator(): string =  # {{{1
-    proc parser_json(expr: string): string =
-        return expr
+                     ): iterator(): string =
+    var vars_tmp = vars
+    var vars_tal = TalVars(root: vars_tmp)
 
-    return parse_tree(src, filename, parser_json)
+    proc parser_json(expr: string): string =
+        return vars_tal.parse_expr(expr)
+
+    proc parser_json_repeat(name, expr: string): iterator(): RepeatVars =
+        iterator ret(): RepeatVars =
+            for i in vars_tal.parse_repeat_seq(name, expr):
+                yield i
+        return ret
+
+    return parse_tree(src, filename, parser_json, parser_json_repeat)
 
 
 proc parse_template*(src: Stream, filename: string, vars: any  # {{{1
                      ): iterator(): string =  # {{{1
-    proc parser_typeinfo(expr: string): string =
+    proc parser_typeinfo(expr: string, vars: TalVars): string =
         return expr
 
     return parse_tree(src, filename, parser_typeinfo)

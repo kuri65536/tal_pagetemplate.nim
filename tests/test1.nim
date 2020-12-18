@@ -8,6 +8,7 @@ v.2.0. If a copy of the MPL was not distributed with this file,
 You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#
+import json
 import streams
 import unittest
 
@@ -19,7 +20,9 @@ type
 
 
 proc parse_all(fp: Stream): string =  # {{{1
-    var vars = Vars(repeat_src: @[1, 2, 3, 4, 5])
+    # var vars = Vars(repeat_src: @[1, 2, 3, 4, 5])
+    var vars = newJObject()
+    vars.add("repeat_src", % @[1, 2, 3, 4, 5])
     var fn = parse_template(fp, "", vars)
     var ret = ""
     while not finished(fn):
