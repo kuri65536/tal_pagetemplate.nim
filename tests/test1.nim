@@ -10,6 +10,7 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 ]#
 import json
 import streams
+import strutils
 import unittest
 
 import tal_pagetemplate
@@ -75,7 +76,19 @@ test "T2-4-1: can parse tal:repeat":  # {{{1
     check parse_all(fp) == "<a>1</a><a>2</a><a>3</a><a>4</a><a>5</a>"
 
 
-test "T2-4-2: can parse tal:repeat 2 - various parameters":  # {{{1
+test "T2-4-2: can parse tal:repeat 2 - mix contents":  # {{{1
+    var fp = newStringStream("""
+        <a tal:repeat="  i   repeat_src   ">
+        <b tal:content="repeat/i/number"></b>this</a>""".strip())
+    var answer = """<a><b>1</b>this</a>
+                    <a><b>2</b>this</a>
+                    <a><b>3</b>this</a>
+                    <a><b>4</b>this</a>
+                    <a><b>5</b>this</a>""".replace(" ", "").replace("\n", "")
+    check parse_all(fp) == answer
+
+
+test "T2-4-3: can parse tal:repeat 3 - various parameters":  # {{{1
     var fp = newStringStream("<a tal:repeat=\"  i   repeat_src   \" " &
                              "tal:content=\"repeat/i/number\">this</a>")
     check parse_all(fp) == "<a>1</a><a>2</a><a>3</a><a>4</a><a>5</a>"

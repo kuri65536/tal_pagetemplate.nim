@@ -7,7 +7,7 @@ This Source Code Form is subject to the terms of the Mozilla Public License,
 v.2.0. If a copy of the MPL was not distributed with this file,
 You can obtain one at https://mozilla.org/MPL/2.0/.
 
-]#
+]#  # import {{{1
 import json
 import parsexml
 import streams
@@ -17,10 +17,11 @@ import tables
 import typeinfo
 
 when false:
-    import ./tal_expr
+    import tal_expr
 else:
-    import ./tal_expr_json
-import ./tal_repeat
+    import tal_pagetemplate/tal_expr_json
+import tal_pagetemplate/tal_common
+import tal_pagetemplate/tal_repeat
 
 
 proc debg(msg: string): void =
@@ -28,22 +29,10 @@ proc debg(msg: string): void =
 
 
 type
-  Attrs = Table[string, string]
-
   TagProcess {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
     tag_in_repeat    # repeat elements by args.
-
-  TagRepeat0 = ref object of RootObj  # {{{1
-    elem, sfx: string
-    attrs: Attrs
-    children: seq[TagRepeat0]
-
-  TagRepeat = ref object of RootObj  # {{{1
-    name: string
-    expr: string
-    xml: TagRepeat0
 
   TagStack = ref object of RootObj  # {{{1
     elem: string
@@ -58,16 +47,6 @@ type
     stacks: seq[TagStack]
 
 
-proc is_true(src: string): bool =  # {{{1
-    # TODO(shimoda): check official TAL docs.
-    var i = src.strip().toLower()
-    if src == "yes":
-        return true
-    if src == "true":
-        return true
-    return false
-
-
 proc check(self: set[TagProcess], flags: set[TagProcess]): bool =  # {{{1
     return self * flags != {}
 
@@ -78,8 +57,8 @@ proc check_current(self: LocalParser, flags: set[TagProcess]): bool =  # {{{1
     return self.stacks[0].flags.check(flags)
 
 
-proc parse_repeat(src: string): TagRepeat =  # {{{1
-    var ret = TagRepeat()
+proc parse_repeat(self: LocalParser, elem, src: string, attrs: Attrs  # {{{1
+                  ): TagRepeat =
     var (name, expr) = ("", "")
     for i in src.strip().split(" "):
         if len(i) < 1:  # remove "a  b" -> "a b"
@@ -91,9 +70,7 @@ proc parse_repeat(src: string): TagRepeat =  # {{{1
     if len(expr) > 0:
         expr = expr[1 ..^ 1]  # remove left space.
     # echo fmt"repeat -> {name}-{expr}"
-    ret.name = name
-    ret.expr = expr
-    return ret
+    return initTagRepeat(elem, name, expr, attrs, self.fn_expr, self.fn_repeat)
 
 
 proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
@@ -112,26 +89,6 @@ proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
     return ret
 
 
-proc render_repeat(self: LocalParser, src: seq[TagRepeat0]): string =  # {{{1
-    var ret = ""
-    for i in src:
-        if i.attrs.hasKey("tal:replace"):
-            var expr = i.attrs["tal:replace"]
-            ret &= self.fn_expr(expr)
-            continue
-        if i.attrs.hasKey("tal:content"):
-            var expr = i.attrs["tal:content"]
-            ret &= render_attrs(i.elem, "", i.attrs)
-            ret &= self.fn_expr(expr)
-            ret &= "</" & i.elem & ">"
-            continue
-
-        ret &= render_attrs(i.elem, "", i.attrs)
-        ret &= self.render_repeat(i.children)
-        ret &= i.sfx
-    return ret
-
-
 proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     debg(fmt"start_tag: {tag.attrs}")
     var attrs = tag.attrs
@@ -145,9 +102,7 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         var tmp = attrs
         tmp.del("tal:repeat")
         tag.flags.incl(tag_in_repeat)
-        tag.repeat = parse_repeat(attrs["tal:repeat"])
-        tag.repeat.xml = TagRepeat0(elem: tag.elem, attrs: tmp,
-                                    children: @[])
+        tag.repeat = self.parse_repeat(tag.elem, attrs["tal:repeat"], attrs)
         return ""
 
     var sfx = ""
@@ -162,7 +117,7 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     if attrs.hasKey("tal:omit-tag"):
         var expr = attrs["tal:omit-tag"]
         expr = self.fn_expr(expr)
-        if expr == "" or is_true(expr):
+        if tal_omit_tag_is_enabled(expr):
             self.stacks[0].flags.incl(tag_in_replace)
             return ""
 
@@ -173,21 +128,11 @@ proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     if self.check_current({tag_in_replace}):
         return ""
     var ret = "</" & name & ">"
-    var stack = self.stacks[0]
-    if isNil(stack.repeat):
-        return ret
-    var (tags, iter) = ("", self.fn_repeat(stack.repeat.name, stack.repeat.expr))
-    var i = iter()
-    while not finished(iter):
-        tags &= self.render_repeat(@[stack.repeat.xml])
-        i = iter()
-    return tags
+    return ret
 
 
 proc data(self: var LocalParser, content: string): string =  # {{{1
     if self.check_current({tag_in_replace, tag_in_content}):
-        return ""
-    if self.check_current({tag_in_repeat}):
         return ""
     return content
 
@@ -240,6 +185,20 @@ proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
     return ret
 
 
+proc parse_tree_in_repeat(self: var LocalParser, x: XmlParser  # {{{1
+                          ): tuple[d: string, f: bool] =
+    if not self.check_current({tag_in_repeat}):
+        return ("", false)
+    var stack = self.stacks[0]
+    var (d, f) = stack.repeat.parse_tree(x)
+    if f:
+        return (d, true)
+    # finish a repeat tag
+    self.stacks.delete(0)
+    # TODO(shimoda): nested repeat.
+    return (d, true)
+
+
 proc parse_tree(src: Stream, filename: string,  # {{{1
                 fn_expr: proc(expr: string): string,
                 fn_repeat: proc(name, expr: string): iterator(): RepeatVars
@@ -252,8 +211,12 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
         defer: x.close()
 
         while true:
-            var d = ""
             x.next()
+            var (d, f) = parser.parse_tree_in_repeat(x)
+            if len(d) > 0:
+                yield d
+            if f:
+                continue
             case x.kind
             of xmlElementStart: d = parser.parse_tag(x.elementName, false)
             of xmlElementOpen:  d = parser.parse_tag(x.elementName, true)
