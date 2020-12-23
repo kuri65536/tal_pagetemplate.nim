@@ -16,9 +16,9 @@ import ./tal_repeat
 
 proc initRepeatVars(n, max: int): RepeatVars =  # {{{1
     var ret = RepeatVars(
-        n_index: n, n_number: n + 1,
+        n_index: n, n_number: n + 1, n_length: max,
         f_even: (n mod 2) == 0, f_start: n == 0,
-        f_odd: (n mod 2) == 1, f_end: n == max,
+        f_odd: (n mod 2) == 1, f_end: n == max - 1,
         letter: tal_repeat_letters(n),
         roman: tal_repeat_romans(n + 1),
         )
@@ -35,6 +35,7 @@ proc to_jsonnode(self: RepeatVars): JsonNode =  # {{{1
     ret.add("odd", newJBool(self.f_odd))
     ret.add("start", newJBool(self.f_start))
     ret.add("end", newJBool(self.f_end))
+    ret.add("length", newJInt(self.n_length))
     ret.add("letter", newJString(self.letter))
     ret.add("Letter", newJString(self.Letter))
     ret.add("roman", newJString(self.roman))

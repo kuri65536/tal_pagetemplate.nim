@@ -30,7 +30,7 @@ type
     element_ignore: string
 
   RepeatVars* = ref object of RootObj  # {{{1
-    n_index*, n_number*: int
+    n_index*, n_number*, n_length*: int
     f_even*, f_odd*: bool
     f_start*, f_end*: bool
     letter*, Letter*: string
@@ -91,11 +91,13 @@ proc tal_repeat_romans*(n: int): string =  # {{{1
 
 
 proc tal_repeat_letters*(n: int): string =  # {{{1
-    var tmp = n
+    var (f, tmp) = (true, n)
     var ret = ""
-    while tmp != 0:
+    while tmp > 0 or f:
+        f = false
         var i = tmp mod 25
         tmp = tmp div 25
+        debg(fmt"letters: {n}->{i},{tmp}")
         ret = ret & $chr(ord('a') + i)
     return ret
 
@@ -136,7 +138,7 @@ proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
     var attrs = initTable[string, string]()
     var ret = ""
     for i in self.xml:
-        echo(fmt"looping: {$i.kind}-{ret}")
+        debg(fmt"looping: {$i.kind}-{ret}")
         case i.kind:
         of xmlElementEnd:
             ret &= self.render_repeat_endtag(i.data)
@@ -202,10 +204,10 @@ proc render_repeat_tag_start(self: TagRepeat, vars: RepeatVars  # {{{1
         var expr = self.attrs["tal:content"]
         expr = self.fn_expr(expr)
         ret &= expr
-        echo(fmt"tag-start(content): {ret}")
+        debg(fmt"tag-start(content): {ret}")
         return (false, ret)
 
-    echo(fmt"tag-start: {ret}")
+    debg(fmt"tag-start: {ret}")
     return (true, ret)
 
 
