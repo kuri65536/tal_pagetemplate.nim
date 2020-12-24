@@ -137,5 +137,11 @@ test "T2-4-3: can parse tal:repeat 3 - various parameters":  # {{{1
                          "tal:content=\"repeat/i/length\">this</a>")
     check parse_all(fp) == "<a>5</a><a>5</a><a>5</a><a>5</a><a>5</a>"
 
+test "T2-5-1: can parse tal:define":  # {{{1
+    var fp = newStringStream("<a tal:define=\"j 2\">define bb:</a>" &
+                             "<bb tal:content=\"j\">is number ?</bb>")
+    check parse_all(fp) == "<a>define bb:</a><bb>2</bb>"
+
+
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

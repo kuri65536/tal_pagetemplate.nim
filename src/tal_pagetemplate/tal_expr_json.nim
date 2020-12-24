@@ -7,10 +7,11 @@ This Source Code Form is subject to the terms of the Mozilla Public License,
 v.2.0. If a copy of the MPL was not distributed with this file,
 You can obtain one at https://mozilla.org/MPL/2.0/.
 
-]#
+]#  # import {{{1
 import json
 import strutils
 
+import ./tal_common
 import ./tal_repeat
 
 
@@ -187,6 +188,25 @@ iterator parse_repeat_seq*(self: var TalVars, name, src: string): RepeatVars =  
     self.pop_var("repeat")
     self.pop_var(name)
 
+
+proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1
+                   expr: string): void =
+    var src = expr.strip()
+    if src.startsWith("local "):
+        # TODO(shimoda): var pop at the end of tag.
+        src = src[6 ..^ 1]
+    elif src.startsWith("global "):
+        src = src[7 ..^ 1]
+
+    for statement in src.split(";"):
+        var seq = statement.split(" ")
+        if len(seq) < 2:
+            continue  # TODO(shimoda): error handling...
+        var name = seq[0]
+        var expression = join(seq[1 ..^ 1], " ")
+        expression = expression.strip()
+        expression = self.expr(expression)
+        vars.push_var(name, %expression)
 
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

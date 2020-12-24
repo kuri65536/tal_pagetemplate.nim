@@ -11,6 +11,20 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 import strutils
 
 
+type
+  RepeatVars* = ref object of RootObj  # {{{1
+    n_index*, n_number*, n_length*: int
+    f_even*, f_odd*: bool
+    f_start*, f_end*: bool
+    letter*, Letter*: string
+    roman*, Roman*: string
+
+  TalExpr* = ref object of RootObj  # {{{1
+    expr*: proc(expr: string): string
+    repeat*: proc(name, expr: string): iterator(): RepeatVars
+    defvars*: proc(expr: string): void
+
+
 proc is_true(src: string): bool =  # {{{1
     # TODO(shimoda): check official TAL docs.
     var i = src.strip().toLower()

@@ -27,7 +27,6 @@ import tal_pagetemplate/tal_repeat
 proc debg(msg: string): void =
     discard
 
-
 type
   TagProcess {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
@@ -42,8 +41,7 @@ type
 
 
   LocalParser = ref object of RootObj  # {{{1
-    fn_expr: proc(expr: string): string
-    fn_repeat: proc(name, expr: string): iterator(): RepeatVars
+    exprs: TalExpr
     stacks: seq[TagStack]
 
 
@@ -70,7 +68,7 @@ proc parse_repeat(self: LocalParser, elem, src: string, attrs: Attrs  # {{{1
     if len(expr) > 0:
         expr = expr[1 ..^ 1]  # remove left space.
     # echo fmt"repeat -> {name}-{expr}"
-    return initTagRepeat(elem, name, expr, attrs, self.fn_expr, self.fn_repeat)
+    return initTagRepeat(elem, name, expr, attrs, self.exprs)
 
 
 proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
@@ -80,6 +78,8 @@ proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
     debg(fmt"start_tag: {attrs}")
     var ret = format.replace("$1>", elem)
     for k, v in attrs.pairs():
+        if k == "tal:define":
+            continue
         if k == "tal:content":
             continue
         if k == "tal:repeat":
@@ -98,6 +98,11 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         return render_attrs(tag.elem, "", tag.attrs)
 
     # TODO(shimoda): parse orders, fit to official
+    if attrs.hasKey("tal:define"):
+        var expr = attrs["tal:define"]
+        self.exprs.defvars(expr)
+        attrs.del("tal:define")
+
     if attrs.hasKey("tal:repeat"):
         var tmp = attrs
         tmp.del("tal:repeat")
@@ -109,14 +114,14 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     if attrs.hasKey("tal:replace"):
         tag.flags.incl(tag_in_replace)
         var expr = attrs["tal:replace"]
-        return self.fn_expr(expr)
+        return self.exprs.expr(expr)
     if attrs.hasKey("tal:content"):
         tag.flags.incl(tag_in_content)
         var expr = attrs["tal:content"]
-        sfx = self.fn_expr(expr)
+        sfx = self.exprs.expr(expr)
     if attrs.hasKey("tal:omit-tag"):
         var expr = attrs["tal:omit-tag"]
-        expr = self.fn_expr(expr)
+        expr = self.exprs.expr(expr)
         if tal_omit_tag_is_enabled(expr):
             self.stacks[0].flags.incl(tag_in_replace)
             return ""
@@ -200,12 +205,9 @@ proc parse_tree_in_repeat(self: var LocalParser, x: XmlParser  # {{{1
 
 
 proc parse_tree(src: Stream, filename: string,  # {{{1
-                fn_expr: proc(expr: string): string,
-                fn_repeat: proc(name, expr: string): iterator(): RepeatVars
-                ): iterator(): string =
+                exprs: TalExpr): iterator(): string =
     iterator ret(): string =
-        var parser = LocalParser(fn_expr: fn_expr,
-                                 fn_repeat: fn_repeat)
+        var parser = LocalParser(exprs: exprs)
         var x: XmlParser
         open(x, src, "")
         defer: x.close()
@@ -243,6 +245,7 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
 
 proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
                      ): iterator(): string =
+    var vars_expr: TalExpr
     var vars_tmp = vars
     var vars_tal = TalVars(root: vars_tmp)
 
@@ -255,7 +258,13 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
                 yield i
         return ret
 
-    return parse_tree(src, filename, parser_json, parser_json_repeat)
+    proc parser_json_defvars(expr: string): void =
+        vars_expr.parse_define(vars_tal, expr)
+
+    vars_expr = TalExpr(expr: parser_json,
+                        repeat: parser_json_repeat,
+                        defvars: parser_json_defvars)
+    return parse_tree(src, filename, vars_expr)
 
 
 proc parse_template*(src: Stream, filename: string, vars: any  # {{{1

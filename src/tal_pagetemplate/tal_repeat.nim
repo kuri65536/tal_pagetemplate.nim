@@ -29,13 +29,6 @@ type
   RepeatStatus = ref object of RootObj  # {{{1
     element_ignore: string
 
-  RepeatVars* = ref object of RootObj  # {{{1
-    n_index*, n_number*, n_length*: int
-    f_even*, f_odd*: bool
-    f_start*, f_end*: bool
-    letter*, Letter*: string
-    roman*, Roman*: string
-
   TagRepeat0* = ref object of RootObj  # {{{1
     kind: XmlEventKind
     data: string
@@ -45,21 +38,17 @@ type
     name: string
     expr: string
     attrs: Attrs
-    fn_expr: proc(expr: string): string
-    fn_repeat: proc(name, expr: string): iterator(): RepeatVars
+    exprs: TalExpr
     xml: seq[TagRepeat0]
     current: RepeatStatus
 
 
 proc initTagRepeat*(elem, name, expr: string, attrs: Attrs,  # {{{1
-                    fn_expr: proc(expr: string): string,
-                    fn_repeat: proc(name, expr: string): iterator(): RepeatVars
-                    ): TagRepeat =
+                    exprs: TalExpr): TagRepeat =
     var ret = TagRepeat(elem: elem, name: name, expr: expr)
     ret.attrs = attrs  # copy.
     ret.current = RepeatStatus()
-    ret.fn_expr = fn_expr
-    ret.fn_repeat = fn_repeat
+    ret.exprs = exprs
 
     ret.attrs.del("tal:repeat")
     ret.attrs.del("tal:replace")  # which is significant? replace or repeat?
@@ -110,12 +99,12 @@ proc render_repeat_starttag(self: var TagRepeat,  # {{{1
     if attrs.hasKey("tal:replace"):
         var expr = attrs["tal:replace"]
         self.current.element_ignore = name
-        return self.fn_expr(expr)
+        return self.exprs.expr(expr)
     if attrs.hasKey("tal:content"):
         var ret = fmt"<{name}>"
         var expr = attrs["tal:content"]
         # TODO(shimoda): ret &= render_attrs(self.elem, "", attrs)
-        ret &= self.fn_expr(expr)
+        ret &= self.exprs.expr(expr)
         ret &= "</" & name & ">"
         self.current.element_ignore = name
         return ret
@@ -187,7 +176,7 @@ proc render_repeat_tag_start(self: TagRepeat, vars: RepeatVars  # {{{1
                              ): tuple[f: bool, d: string] =
     if self.attrs.hasKey("tal:omit-tag"):
         var expr = self.attrs["tal:omit-tag"]
-        expr = self.fn_expr(expr)
+        expr = self.exprs.expr(expr)
         if tal_omit_tag_is_enabled(expr):
             return (false, "")
 
@@ -202,7 +191,7 @@ proc render_repeat_tag_start(self: TagRepeat, vars: RepeatVars  # {{{1
 
     if self.attrs.hasKey("tal:content"):
         var expr = self.attrs["tal:content"]
-        expr = self.fn_expr(expr)
+        expr = self.exprs.expr(expr)
         ret &= expr
         debg(fmt"tag-start(content): {ret}")
         return (false, ret)
@@ -219,7 +208,7 @@ proc parse_tagend(self: var TagRepeat, name: string  # {{{1
         return ("", true)
 
     debg("finishing repeat...")
-    var (tags, iter) = ("", self.fn_repeat(self.name, self.expr))
+    var (tags, iter) = ("", self.exprs.repeat(self.name, self.expr))
     var i = iter()
     while not finished(iter):
         var (f, d) = self.render_repeat_tag_start(i)
