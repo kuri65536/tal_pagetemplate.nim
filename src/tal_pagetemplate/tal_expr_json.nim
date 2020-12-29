@@ -10,6 +10,7 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 ]#  # import {{{1
 import json
 import strutils
+import tables
 
 import ./tal_common
 import ./tal_repeat
@@ -46,7 +47,8 @@ proc to_jsonnode(self: RepeatVars): JsonNode =  # {{{1
 
 proc parse_expr_hier(self: JsonNode, parts: seq[string]): JsonNode =  # {{{1
     if len(parts) < 1:
-        return self
+        var obj = self
+        return obj
     if self.hasKey(parts[0]):
         return parse_expr_hier(self[parts[0]], parts[1 ..^ 1])
     return newJNull()
@@ -66,7 +68,11 @@ proc parse_expr_path(self: TalVars, src: string): JsonNode =  # {{{1
         discard
 
     var parts = src.split("/")
-    return parse_expr_hier(self.root, parts)
+    var name = parts[0]
+    if not self.root.hasKey(name):
+        return newJNull()
+    var ret = self.root[name].obj
+    return parse_expr_hier(ret, parts[1 ..^ 1])
 
 
 proc parse_expr_exists(self: TalVars, src: string): JsonNode =  # {{{1
@@ -127,42 +133,46 @@ proc parse_expr*(self: TalVars, src: string): string =  # {{{1
     return $expr
 
 
-proc push_var(self: var TalVars, name: string, vobj: JsonNode): void =  # {{{1
-    self.root.add(name, vobj)
+proc push_var(self: var TalVars, name, path: string, vobj: JsonNode): void =  # {{{1
+    var varinfo = (path, vobj)
+    self.root.add(name, varinfo)
 
 
 proc push_repeat_var(self: var TalVars,   # {{{1
                      name: string, repeat_var: JsonNode): void =
     var robj: JsonNode
     if self.root.hasKey("repeat"):
-        robj = self.root["repeat"]
+        robj = self.root["repeat"].obj
     else:
         robj = newJObject()
-        self.root.add("repeat", robj)
+        self.root.add("repeat", ("", robj))
     robj.add(name, repeat_var)
 
 
 proc pop_var(self: var TalVars, name: string): void =  # {{{1
     if not self.root.hasKey(name):
         return
-    self.root.delete(name)
+    self.root.del(name)
 
 
 proc pop_repeat_var(self: var TalVars, name: string): void =  # {{{1
     if not self.root.hasKey("repeat"):
         return
-    var robj = self.root["repeat"]
+    var robj = self.root["repeat"].obj
     if not robj.hasKey(name):
         return
     robj.delete(name)
+    if len(robj) < 1:
+        self.root.del("reeat")
 
 
-iterator parse_repeat_seq*(self: var TalVars, name, src: string): RepeatVars =  # {{{1
+iterator parse_repeat_seq*(self: var TalVars, name, path, src: string  # {{{1
+                           ): RepeatVars =
     var expr = self.parse_expr_local(src)
     case expr.kind:
     of JNull, JInt, JFloat, JBool, JObject:
         var j = initRepeatVars(0, 1)
-        self.push_var(name, expr)
+        self.push_var(name, path, expr)
         self.push_repeat_var(name, j.to_jsonnode())
         yield j
     of JString:
@@ -171,7 +181,7 @@ iterator parse_repeat_seq*(self: var TalVars, name, src: string): RepeatVars =  
             self.pop_repeat_var(name)
             self.pop_var(name)
             var j = initRepeatVars(n, max)
-            self.push_var(name, newJString($i))
+            self.push_var(name, path, newJString($i))
             self.push_repeat_var(name, j.to_jsonnode())
             yield j
             n += 1
@@ -181,7 +191,7 @@ iterator parse_repeat_seq*(self: var TalVars, name, src: string): RepeatVars =  
             self.pop_repeat_var(name)
             self.pop_var(name)
             var j = initRepeatVars(n, max)
-            self.push_var(name, %i)
+            self.push_var(name, path, %i)
             self.push_repeat_var(name, j.to_jsonnode)
             yield j
             n += 1
@@ -190,23 +200,37 @@ iterator parse_repeat_seq*(self: var TalVars, name, src: string): RepeatVars =  
 
 
 proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1
-                   expr: string): void =
-    var src = expr.strip()
-    if src.startsWith("local "):
-        # TODO(shimoda): var pop at the end of tag.
-        src = src[6 ..^ 1]
-    elif src.startsWith("global "):
-        src = src[7 ..^ 1]
+                   expr, path: string): void =
+    for src in expr.split(";"):
+        var src = src.strip()
+        var f_local = true
+        if src.startsWith("local "):
+            src = src[6 ..^ 1]
+            echo("local detected: " & path)
+        elif src.startsWith("global "):
+            src = src[7 ..^ 1]
+            f_local = false
 
-    for statement in src.split(";"):
-        var seq = statement.split(" ")
+        var seq = src.strip().split(" ")
         if len(seq) < 2:
             continue  # TODO(shimoda): error handling...
         var name = seq[0]
         var expression = join(seq[1 ..^ 1], " ")
         expression = expression.strip()
         expression = self.expr(expression)
-        vars.push_var(name, %expression)
+        var var_path = if f_local: path else: ""
+        vars.push_var(name, var_path, %expression)
+
+
+proc leave_define*(self: var TalVars,  # {{{1
+                   path: string): void =
+    for name, tup in self.root.pairs():
+        var path_var = tup.path
+        if len(path_var) < 1:
+            continue
+        if path != path_var:
+            continue
+        self.pop_var(name)
 
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

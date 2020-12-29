@@ -137,10 +137,31 @@ test "T2-4-3: can parse tal:repeat 3 - various parameters":  # {{{1
                          "tal:content=\"repeat/i/length\">this</a>")
     check parse_all(fp) == "<a>5</a><a>5</a><a>5</a><a>5</a><a>5</a>"
 
+
 test "T2-5-1: can parse tal:define":  # {{{1
-    var fp = newStringStream("<a tal:define=\"j 2\">define bb:</a>" &
+    var fp = newStringStream("<a tal:define=\"global j 2\">define bb:</a>" &
                              "<bb tal:content=\"j\">is number ?</bb>")
     check parse_all(fp) == "<a>define bb:</a><bb>2</bb>"
+
+    fp = newStringStream("<a tal:define=\"global j 2; global  k 3  \">define bb:</a>" &
+                         "<bb tal:content=\"j\">is number ?</bb>" &
+                         "<cc tal:content=\"k\">is number ?</cc>")
+    check parse_all(fp) == "<a>define bb:</a><bb>2</bb><cc>3</cc>"
+
+
+test "T2-5-2: can parse tal:define, local and global":  # {{{1
+    var fp = newStringStream("<a tal:define=\"j 2\">lcl or glb</a>" &
+                             "<bar tal:define=\"global k 3;local m 4\">" &
+                             "<car tal:replace=\"j\"></car>" &
+                             "<car tal:replace=\"k\"></car>" &
+                             "<car tal:replace=\"m\"></car>" &
+                             "</bar><demo>" &
+                             "<car tal:replace=\"j\"></car>" &
+                             "<car tal:replace=\"k\"></car>" &
+                             "<car tal:replace=\"m\"></car>" &
+                             "</demo>")
+    check parse_all(fp) == "<a>lcl or glb</a><bar>null34</bar>" &
+                           "<demo>null3null</demo>"
 
 
 # end of file {{{1

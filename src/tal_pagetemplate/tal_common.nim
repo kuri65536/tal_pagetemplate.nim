@@ -8,10 +8,23 @@ v.2.0. If a copy of the MPL was not distributed with this file,
 You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#  # import {{{1
+import json
+import parsexml
 import strutils
+import tables
 
 
 type
+  Attrs* = Table[string, string]
+
+  TagProcess* {.size: sizeof(cint).}= enum  # {{{1
+    tag_in_replace   # replace whole tag with content or expr.
+    tag_in_content   # replace content with expr
+    tag_in_repeat    # repeat elements by args.
+
+  RepeatStatus* = ref object of RootObj  # {{{1
+    element_ignore*: string
+
   RepeatVars* = ref object of RootObj  # {{{1
     n_index*, n_number*, n_length*: int
     f_even*, f_odd*: bool
@@ -19,10 +32,39 @@ type
     letter*, Letter*: string
     roman*, Roman*: string
 
+  VarInfo* = ref object of RootObj  # {{{1
+    hash: string
+
+  TagRepeat0* = ref object of RootObj  # {{{1
+    kind*: XmlEventKind
+    data*: string
+
+  TagRepeat* = ref object of RootObj  # {{{1
+    elem*, elem_prev*, path*: string
+    name*, expr*: string
+    attrs*: Attrs
+    exprs*: TalExpr
+    xml*: seq[TagRepeat0]
+    current*: RepeatStatus
+
+  TagStack* = ref object of RootObj  # {{{1
+    elem*: string
+    attrs*: Attrs
+    flags*: set[TagProcess]
+    repeat*: TagRepeat
+
   TalExpr* = ref object of RootObj  # {{{1
     expr*: proc(expr: string): string
-    repeat*: proc(name, expr: string): iterator(): RepeatVars
-    defvars*: proc(expr: string): void
+    repeat*: proc(path, name, expr: string): iterator(): RepeatVars
+    defvars*: proc(expr, path: string): void
+    levvars*: proc(path: string): void
+
+  TalVars* = ref object of RootObj  # {{{1
+    when true:
+        root*: Table[string, tuple[path: string, obj: JsonNode]]
+    else:
+        root*: any
+
 
 
 proc is_true(src: string): bool =  # {{{1
@@ -35,6 +77,17 @@ proc is_true(src: string): bool =  # {{{1
     return false
 
 
+proc xml_path*(src: seq[TagStack]): string =  # {{{1
+    var ret = ""
+    for i in src:
+        ret = i.elem & "-" & ret
+    return ret
+
+
+proc var_hash*(src: string): VarInfo =  # {{{1
+    return VarInfo(hash: src)
+
+
 proc tal_omit_tag_is_enabled*(src: string): bool =  # {{{1
     if src == "":
         return true
@@ -42,3 +95,5 @@ proc tal_omit_tag_is_enabled*(src: string): bool =  # {{{1
         return true
     return false
 
+# end of file {{{1
+# vi: ft=nim:et:ts=4:fdm=marker:nowrap

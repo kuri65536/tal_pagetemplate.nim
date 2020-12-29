@@ -17,35 +17,10 @@ import tables
 import ./tal_common
 
 
-type
-  Attrs* = Table[string, string]
-
-  TalVars* = ref object of RootObj  # {{{1
-    when true:
-        root*: JsonNode
-    else:
-        root*: any
-
-  RepeatStatus = ref object of RootObj  # {{{1
-    element_ignore: string
-
-  TagRepeat0* = ref object of RootObj  # {{{1
-    kind: XmlEventKind
-    data: string
-
-  TagRepeat* = ref object of RootObj  # {{{1
-    elem, elem_prev: string
-    name: string
-    expr: string
-    attrs: Attrs
-    exprs: TalExpr
-    xml: seq[TagRepeat0]
-    current: RepeatStatus
-
-
-proc initTagRepeat*(elem, name, expr: string, attrs: Attrs,  # {{{1
+proc initTagRepeat*(elem, path, name, expr: string, attrs: Attrs,  # {{{1
                     exprs: TalExpr): TagRepeat =
     var ret = TagRepeat(elem: elem, name: name, expr: expr)
+    ret.path = path
     ret.attrs = attrs  # copy.
     ret.current = RepeatStatus()
     ret.exprs = exprs
@@ -95,6 +70,11 @@ proc render_repeat_starttag(self: var TagRepeat,  # {{{1
                             name: string, attrs: Attrs): string =
     if len(self.current.element_ignore) > 0:
         return ""
+
+    # TODO(shimoda): unified with normal parsing.
+    if attrs.hasKey("tal:define"):
+        var expr = attrs["tal:define"]
+        self.exprs.defvars(expr, self.path)  # TODO(shimoda): path in repeat
 
     if attrs.hasKey("tal:replace"):
         var expr = attrs["tal:replace"]
@@ -208,7 +188,7 @@ proc parse_tagend(self: var TagRepeat, name: string  # {{{1
         return ("", true)
 
     debg("finishing repeat...")
-    var (tags, iter) = ("", self.exprs.repeat(self.name, self.expr))
+    var (tags, iter) = ("", self.exprs.repeat(self.path, self.name, self.expr))
     var i = iter()
     while not finished(iter):
         var (f, d) = self.render_repeat_tag_start(i)

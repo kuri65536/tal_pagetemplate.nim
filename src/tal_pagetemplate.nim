@@ -28,18 +28,6 @@ proc debg(msg: string): void =
     discard
 
 type
-  TagProcess {.size: sizeof(cint).}= enum  # {{{1
-    tag_in_replace   # replace whole tag with content or expr.
-    tag_in_content   # replace content with expr
-    tag_in_repeat    # repeat elements by args.
-
-  TagStack = ref object of RootObj  # {{{1
-    elem: string
-    attrs: Attrs
-    flags: set[TagProcess]
-    repeat: TagRepeat
-
-
   LocalParser = ref object of RootObj  # {{{1
     exprs: TalExpr
     stacks: seq[TagStack]
@@ -68,7 +56,8 @@ proc parse_repeat(self: LocalParser, elem, src: string, attrs: Attrs  # {{{1
     if len(expr) > 0:
         expr = expr[1 ..^ 1]  # remove left space.
     # echo fmt"repeat -> {name}-{expr}"
-    return initTagRepeat(elem, name, expr, attrs, self.exprs)
+    var path = self.stacks.xml_path()
+    return initTagRepeat(elem, path, name, expr, attrs, self.exprs)
 
 
 proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
@@ -100,8 +89,8 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     # TODO(shimoda): parse orders, fit to official
     if attrs.hasKey("tal:define"):
         var expr = attrs["tal:define"]
-        self.exprs.defvars(expr)
         attrs.del("tal:define")
+        self.exprs.defvars(expr, self.stacks.xml_path())
 
     if attrs.hasKey("tal:repeat"):
         var tmp = attrs
@@ -133,6 +122,10 @@ proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     if self.check_current({tag_in_replace}):
         return ""
     var ret = "</" & name & ">"
+
+    var path = xml_path(self.stacks)  # remove local vars
+    echo("leavevars: " & path)
+    self.exprs.levvars(path)
     return ret
 
 
@@ -246,24 +239,30 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
 proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
                      ): iterator(): string =
     var vars_expr: TalExpr
-    var vars_tmp = vars
-    var vars_tal = TalVars(root: vars_tmp)
+    var vars_tal = TalVars(
+            root: initTable[string, tuple[path: string, obj: JsonNode]]())
+    for name, fld in vars.getFields():
+        vars_tal.root[name] = ("", fld)
 
     proc parser_json(expr: string): string =
         return vars_tal.parse_expr(expr)
 
-    proc parser_json_repeat(name, expr: string): iterator(): RepeatVars =
+    proc parser_json_repeat(path, name, expr: string): iterator(): RepeatVars =
         iterator ret(): RepeatVars =
-            for i in vars_tal.parse_repeat_seq(name, expr):
+            for i in vars_tal.parse_repeat_seq(name, path, expr):
                 yield i
         return ret
 
-    proc parser_json_defvars(expr: string): void =
-        vars_expr.parse_define(vars_tal, expr)
+    proc parser_json_defvars(expr, path: string): void =
+        vars_expr.parse_define(vars_tal, expr, path)
+
+    proc parser_json_leavevars(path: string): void =
+        vars_tal.leave_define(path)
 
     vars_expr = TalExpr(expr: parser_json,
                         repeat: parser_json_repeat,
-                        defvars: parser_json_defvars)
+                        defvars: parser_json_defvars,
+                        levvars: parser_json_leavevars)
     return parse_tree(src, filename, vars_expr)
 
 
