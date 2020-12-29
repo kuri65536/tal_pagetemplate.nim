@@ -24,9 +24,6 @@ import tal_pagetemplate/tal_common
 import tal_pagetemplate/tal_repeat
 
 
-proc debg(msg: string): void =
-    discard
-
 type
   LocalParser = ref object of RootObj  # {{{1
     exprs: TalExpr
@@ -60,31 +57,13 @@ proc parse_repeat(self: LocalParser, elem, src: string, attrs: Attrs  # {{{1
     return initTagRepeat(elem, path, name, expr, attrs, self.exprs)
 
 
-proc render_attrs(elem, sfx: string, attrs: Attrs): string =  # {{{1
-    let format = "<$1>"
-    if len(attrs) < 1:
-        return format.replace("$1", elem)
-    debg(fmt"start_tag: {attrs}")
-    var ret = format.replace("$1>", elem)
-    for k, v in attrs.pairs():
-        if k == "tal:define":
-            continue
-        if k == "tal:content":
-            continue
-        if k == "tal:repeat":
-            continue
-        ret = ret & fmt" {k}=" & "\"" & fmt"{v}" & "\""
-    ret = ret & ">" & sfx
-    return ret
-
-
 proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     debg(fmt"start_tag: {tag.attrs}")
     var attrs = tag.attrs
     if tag.flags.check({tag_in_replace, tag_in_content}):
         return ""  # in replace or in content
     if len(attrs) < 1:
-        return render_attrs(tag.elem, "", tag.attrs)
+        return self.exprs.render_attrs(tag.elem, "", tag.attrs)
 
     # TODO(shimoda): parse orders, fit to official
     if attrs.hasKey("tal:define"):
@@ -115,7 +94,7 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
             self.stacks[0].flags.incl(tag_in_replace)
             return ""
 
-    return render_attrs(tag.elem, sfx, tag.attrs)
+    return self.exprs.render_attrs(tag.elem, sfx, tag.attrs)
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1

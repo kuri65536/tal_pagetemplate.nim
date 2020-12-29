@@ -232,5 +232,11 @@ proc leave_define*(self: var TalVars,  # {{{1
             continue
         self.pop_var(name)
 
+
+proc parse_attributes*(self: TalVars, src: string  # {{{1
+                       ): Table[string, string] =
+    var ret = initTable[string, string]()
+    return ret
+
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

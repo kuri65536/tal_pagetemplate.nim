@@ -164,5 +164,14 @@ test "T2-5-2: can parse tal:define, local and global":  # {{{1
                            "<demo>null3null</demo>"
 
 
+test "T2-6-1: can parse tal:attribute, simple and override":  # {{{1
+    var fp = newStringStream("<lv1 tal:define=\"i 10; j 20\" st=\"1\">" &
+                             "<lv2 tal:attributes=\"st j; hp i\"" &
+                             " st=\"2\">next</lv2></lv1>")
+    check parse_all(fp) == "<lv1 st=\"1\"><lv2 st=\"20\" hp=\"10\">" &
+                           "next</lv2></lv1>"
+
+
+
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

@@ -10,12 +10,13 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 ]#  # import {{{1
 import json
 import parsexml
+import strformat
 import strutils
 import tables
 
 
 type
-  Attrs* = Table[string, string]
+  Attrs* = Table[string, string]  # {{{1
 
   TagProcess* {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
@@ -66,6 +67,9 @@ type
         root*: any
 
 
+proc debg*(msg: string): void =
+    discard
+
 
 proc is_true(src: string): bool =  # {{{1
     # TODO(shimoda): check official TAL docs.
@@ -94,6 +98,53 @@ proc tal_omit_tag_is_enabled*(src: string): bool =  # {{{1
     if is_true(src):
         return true
     return false
+
+
+proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # {{{1
+    let format = "<$1>"
+    if len(attrs) < 1:
+        return format.replace("$1", elem)
+    var replaces = initTable[string, string]()
+    if attrs.hasKey("tal:attributes"):
+        var expr = attrs["tal:attributes"]
+        echo(fmt"tal:attributes -> {expr}")
+        for src in expr.split(";"):
+            echo(fmt"tal:attributes -> {src}")
+            # TODO(shimoda): escape `;` by doubling.
+            var src = src.strip()
+            var seq = src.split(" ")
+            if len(seq) < 2:
+                continue  # TODO(shimoda): error handling...
+            var name = seq[0]  # TODO(shimoda): namespace...
+            var expression = join(seq[1 ..^ 1], " ")
+            expression = expression.strip()
+            expression = self.expr(expression)
+            replaces.add(name, expression)
+        echo(fmt"tal:attributes -> replaces: {replaces}")
+
+    debg(fmt"start_tag: {attrs}")
+    var ret = format.replace("$1>", elem)
+    for k, v in attrs.pairs():
+        if k == "tal:define":
+            continue
+        if k == "tal:content":
+            continue
+        if k == "tal:repeat":
+            continue
+        if k == "tal:attributes":
+            continue
+        var v = v
+        if replaces.hasKey(k):
+            v = replaces[k]
+            echo(fmt"tal:attributes: replace: {k}->{v}")
+            replaces.del(k)
+        ret &= fmt" {k}=" & "\"" & v & "\""
+    for k, v in replaces.pairs():
+        echo(fmt"tal:attributes: insert: {k}->{v}")
+        ret &= fmt" {k}=" & "\"" & v & "\""
+    ret = ret & ">" & sfx
+    return ret
+
 
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap
