@@ -103,7 +103,7 @@ proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     var ret = "</" & name & ">"
 
     var path = xml_path(self.stacks)  # remove local vars
-    echo("leavevars: " & path)
+    debg("leavevars: " & path)
     self.exprs.levvars(path)
     return ret
 

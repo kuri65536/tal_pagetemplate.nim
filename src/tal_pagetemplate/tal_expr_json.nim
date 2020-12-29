@@ -206,7 +206,7 @@ proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1
         var f_local = true
         if src.startsWith("local "):
             src = src[6 ..^ 1]
-            echo("local detected: " & path)
+            debg("local detected: " & path)
         elif src.startsWith("global "):
             src = src[7 ..^ 1]
             f_local = false

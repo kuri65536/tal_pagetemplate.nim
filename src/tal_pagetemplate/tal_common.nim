@@ -107,9 +107,9 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     var replaces = initTable[string, string]()
     if attrs.hasKey("tal:attributes"):
         var expr = attrs["tal:attributes"]
-        echo(fmt"tal:attributes -> {expr}")
+        debg(fmt"tal:attributes -> {expr}")
         for src in expr.split(";"):
-            echo(fmt"tal:attributes -> {src}")
+            debg(fmt"tal:attributes -> {src}")
             # TODO(shimoda): escape `;` by doubling.
             var src = src.strip()
             var seq = src.split(" ")
@@ -120,7 +120,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
             expression = expression.strip()
             expression = self.expr(expression)
             replaces.add(name, expression)
-        echo(fmt"tal:attributes -> replaces: {replaces}")
+        debg(fmt"tal:attributes -> replaces: {replaces}")
 
     debg(fmt"start_tag: {attrs}")
     var ret = format.replace("$1>", elem)
@@ -136,11 +136,11 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
         var v = v
         if replaces.hasKey(k):
             v = replaces[k]
-            echo(fmt"tal:attributes: replace: {k}->{v}")
+            debg(fmt"tal:attributes: replace: {k}->{v}")
             replaces.del(k)
         ret &= fmt" {k}=" & "\"" & v & "\""
     for k, v in replaces.pairs():
-        echo(fmt"tal:attributes: insert: {k}->{v}")
+        debg(fmt"tal:attributes: insert: {k}->{v}")
         ret &= fmt" {k}=" & "\"" & v & "\""
     ret = ret & ">" & sfx
     return ret

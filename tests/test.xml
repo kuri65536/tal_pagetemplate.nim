@@ -1,0 +1,9 @@
+<html>
+<head>
+</head>
+<body>
+  <p tal:content="content">
+  </p>
+</body>
+</html>
+
