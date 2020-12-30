@@ -200,9 +200,9 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
             of xmlCharData:     d = parser.data(x.charData)
             of xmlWhitespace:   d = parser.data(x.charData)
             of xmlCData:        d = parser.data(x.charData)
-            of xmlSpecial:      d = parser.data(x.charData)
+            of xmlSpecial:      d = parser.through(fmt"<!{x.charData}>")
             of xmlEntity:       d = parser.data(x.entityName)
-            of xmlComment:      d = parser.through(x.charData)  # "<!-- $1 -->"
+            of xmlComment:      d = parser.through(fmt"<!-- {x.charData} -->")
             of xmlPI:
                 d = parser.through("<? $1 ## $2 ?>" % [x.piName, x.piRest])
             of xmlError:        echo(x.errorMsg())
