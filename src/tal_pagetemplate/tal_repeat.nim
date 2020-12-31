@@ -103,8 +103,11 @@ proc render_repeat_endtag(self: var TagRepeat, name: string): string =  # {{{1
 
 proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
                                 var_repeat: RepeatVars): string =
+    proc new_attrs(): Attrs =
+        return initOrderedTable[string, string]()
+
     var stack: seq[string] = @[]
-    var attrs = initTable[string, string]()
+    var attrs = new_attrs()
     var ret = ""
     for i in self.xml:
         debg(fmt"looping: {$i.kind}-{ret}")
@@ -113,10 +116,10 @@ proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
             ret &= self.render_repeat_endtag(i.data)
         of xmlElementStart, xmlElementClose:
             var d = self.render_repeat_starttag(i.data, attrs)
-            attrs = initTable[string, string]()
+            attrs = new_attrs()
             ret &= d
         of xmlElementOpen:
-            attrs = initTable[string, string]()
+            attrs = new_attrs()
         of xmlAttribute:
             var seq = i.data.split("\t")
             if len(seq) > 1:

@@ -130,7 +130,7 @@ proc parse_tag(self: var LocalParser, name: string, f_open: bool  # {{{1
         if prev_flags.contains(tag_in_replace):
             new_flags = {}
     stack.flags = {}
-    stack.attrs = initTable[string, string]()
+    stack.attrs = initOrderedTable[string, string]()
     self.stacks.insert(stack, 0)
     if not f_open:
         return self.start_tag(self.stacks[0])

@@ -16,7 +16,7 @@ import tables
 
 
 type
-  Attrs* = Table[string, string]  # {{{1
+  Attrs* = OrderedTable[string, string]  # {{{1
 
   TagProcess* {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
