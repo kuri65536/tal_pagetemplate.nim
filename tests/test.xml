@@ -5,6 +5,8 @@
 <body>
   <p tal:content="content">
   </p>
+  <br />
+  <!-- this is comment -->
 </body>
 </html>
 

@@ -181,7 +181,7 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
     iterator ret(): string =
         var parser = LocalParser(exprs: exprs)
         var x: XmlParser
-        open(x, src, "")
+        open(x, src, "", {reportWhitespace, reportComments})
         defer: x.close()
 
         while true:
@@ -202,7 +202,7 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
             of xmlCData:        d = parser.data(x.charData)
             of xmlSpecial:      d = parser.through(fmt"<!{x.charData}>")
             of xmlEntity:       d = parser.data(x.entityName)
-            of xmlComment:      d = parser.through(fmt"<!-- {x.charData} -->")
+            of xmlComment:      d = parser.through(fmt"<!--{x.charData}-->")
             of xmlPI:
                 d = parser.through("<? $1 ## $2 ?>" % [x.piName, x.piRest])
             of xmlError:        echo(x.errorMsg())

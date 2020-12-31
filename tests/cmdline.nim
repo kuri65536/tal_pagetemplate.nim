@@ -54,7 +54,7 @@ else:
 var lines = parse_template(fp, fname_xml, vars)
 var line = lines()
 while not finished(lines):
-    echo(line)
+    stdout.write(line)
     line = lines()
 
 # end of file {{{1

@@ -42,8 +42,9 @@ import tal_pagetemplate
 TODO
 -----------------------------------------
 - enable the varibles from nim runtime informations, instead of JSON.
-- tal:attributes
+- enable JSON string/ fields.
 - tal:on-error
+- i18n
 - re-write tal:repeat and its nesting.
 - re-write tal:repeat and normal parse.
 
