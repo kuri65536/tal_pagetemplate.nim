@@ -28,6 +28,7 @@ type
   LocalParser = ref object of RootObj  # {{{1
     exprs: TalExpr
     stacks: seq[TagStack]
+    curr_pos, last_pos: tuple[line, col: int]
 
 
 proc check(self: set[TagProcess], flags: set[TagProcess]): bool =  # {{{1
@@ -66,10 +67,8 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         return self.exprs.render_attrs(tag.elem, "", tag.attrs)
 
     # TODO(shimoda): parse orders, fit to official
-    if attrs.hasKey("tal:define"):
-        var expr = attrs["tal:define"]
-        attrs.del("tal:define")
-        self.exprs.defvars(expr, self.stacks.xml_path())
+    var (n, d) = self.exprs.render_starttag(
+            self.stacks.xml_path(), tag.elem, attrs)
 
     if attrs.hasKey("tal:repeat"):
         var tmp = attrs
@@ -78,29 +77,25 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
         tag.repeat = self.parse_repeat(tag.elem, attrs["tal:repeat"], attrs)
         return ""
 
-    var sfx = ""
-    if attrs.hasKey("tal:replace"):
+    case n:
+    of tag_in_replace:
+        tag.flags.incl(n)
+        return d
+    of tag_in_content:
+        tag.flags.incl(n)
+        return d
+    of tag_in_omit_tag:
         tag.flags.incl(tag_in_replace)
-        var expr = attrs["tal:replace"]
-        return self.exprs.expr(expr)
-    if attrs.hasKey("tal:content"):
-        tag.flags.incl(tag_in_content)
-        var expr = attrs["tal:content"]
-        sfx = self.exprs.expr(expr)
-    if attrs.hasKey("tal:omit-tag"):
-        var expr = attrs["tal:omit-tag"]
-        expr = self.exprs.expr(expr)
-        if tal_omit_tag_is_enabled(expr):
-            self.stacks[0].flags.incl(tag_in_replace)
-            return ""
-
-    return self.exprs.render_attrs(tag.elem, sfx, tag.attrs)
+        return ""
+    else:
+        discard
+    return d
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     if self.check_current({tag_in_replace}):
         return ""
-    var ret = "</" & name & ">"
+    var ret = render_endtag(name)
 
     var path = xml_path(self.stacks)  # remove local vars
     debg("leavevars: " & path)
@@ -159,6 +154,7 @@ proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
         discard
     elif self.stacks[0].elem == name:
         self.stacks.delete(0)
+    debg(fmt"</>: {self.curr_pos}-{self.last_pos}")
     return ret
 
 
@@ -191,6 +187,7 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
                 yield d
             if f:
                 continue
+            parser.curr_pos = (x.getLine(), x.getColumn())
             case x.kind
             of xmlElementStart: d = parser.parse_tag(x.elementName, false)
             of xmlElementOpen:  d = parser.parse_tag(x.elementName, true)
@@ -199,16 +196,16 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
             of xmlElementEnd:   d = parser.parse_tagend(x.elementName)
             of xmlCharData:     d = parser.data(x.charData)
             of xmlWhitespace:   d = parser.data(x.charData)
-            of xmlCData:        d = parser.data(x.charData)
-            of xmlSpecial:      d = parser.through(fmt"<!{x.charData}>")
-            of xmlEntity:       d = parser.data(x.entityName)
-            of xmlComment:      d = parser.through(fmt"<!--{x.charData}-->")
-            of xmlPI:
-                d = parser.through("<? $1 ## $2 ?>" % [x.piName, x.piRest])
+            of xmlCData:        d = parser.through(render_cdata(x.charData))
+            of xmlComment:      d = parser.through(render_comment(x.charData))
+            of xmlEntity:       d = parser.through(render_entity(x.entityName))
+            of xmlPI:         d = parser.through(render_pi(x.piName, x.piRest))
+            of xmlSpecial:      d = parser.through(render_special(x.charData))
             of xmlError:        echo(x.errorMsg())
             of xmlEof:
                 break # end of file reached
 
+            parser.last_pos = parser.curr_pos
             if len(d) < 1:
                 continue
             yield d

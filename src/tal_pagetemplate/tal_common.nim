@@ -22,6 +22,8 @@ type
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
     tag_in_repeat    # repeat elements by args.
+    tag_in_omit_tag  # tal:omit-tag
+    tag_in_notal     # otherwise
 
   RepeatStatus* = ref object of RootObj  # {{{1
     element_ignore*: string
@@ -67,7 +69,11 @@ type
         root*: any
 
 
-proc debg*(msg: string): void =
+proc newAttrs*(): Attrs =  # {{{1
+    return initOrderedTable[string, string]()
+
+
+proc debg*(msg: string): void =  # {{{1
     discard
 
 
@@ -81,15 +87,35 @@ proc is_true(src: string): bool =  # {{{1
     return false
 
 
+proc render_endtag*(src: string): string =  # {{{1
+    return fmt"</{src}>"
+
+
+proc render_cdata*(src: string): string =  # {{{1
+    return fmt"<![CDATA[{src}]]>"
+
+
+proc render_comment*(src: string): string =  # {{{1
+    return fmt"<!--{src}-->"
+
+
+proc render_entity*(src: string): string =  # {{{1
+    return fmt"&{src};"
+
+
+proc render_pi*(name, rest: string): string =  # {{{1
+    return fmt"<? {name} ## {rest} ?>"
+
+
+proc render_special*(src: string): string =  # {{{1
+    return fmt"<!{src}>"
+
+
 proc xml_path*(src: seq[TagStack]): string =  # {{{1
     var ret = ""
     for i in src:
         ret = i.elem & "-" & ret
     return ret
-
-
-proc var_hash*(src: string): VarInfo =  # {{{1
-    return VarInfo(hash: src)
 
 
 proc tal_omit_tag_is_enabled*(src: string): bool =  # {{{1
@@ -104,7 +130,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     let format = "<$1>"
     if len(attrs) < 1:
         return format.replace("$1", elem)
-    var replaces = initTable[string, string]()
+    var replaces = newAttrs()
     if attrs.hasKey("tal:attributes"):
         var expr = attrs["tal:attributes"]
         debg(fmt"tal:attributes -> {expr}")
@@ -144,6 +170,31 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
         ret &= fmt" {k}=" & "\"" & v & "\""
     ret = ret & ">" & sfx
     return ret
+
+
+proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
+                      attrs: var Attrs): tuple[n: TagProcess, d: string] =
+    if attrs.hasKey("tal:define"):
+        var expr = attrs["tal:define"]
+        attrs.del("tal:define")
+        self.defvars(expr, path)  # TODO(shimoda): path in repeat
+
+    if attrs.hasKey("tal:replace"):
+        var expr = attrs["tal:replace"]
+        return (tag_in_replace, self.expr(expr))
+
+    if attrs.hasKey("tal:content"):
+        var expr = attrs["tal:content"]
+        expr = self.expr(expr)
+        return (tag_in_content, self.render_attrs(name, expr, attrs))
+
+    if attrs.hasKey("tal:omit-tag"):
+        var expr = attrs["tal:omit-tag"]
+        expr = self.expr(expr)
+        if tal_omit_tag_is_enabled(expr):
+            return (tag_in_omit_tag, "")
+
+    return (tag_in_notal, self.render_attrs(name, "", attrs))
 
 
 # end of file {{{1

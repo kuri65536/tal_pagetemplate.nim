@@ -6,6 +6,7 @@
   <p tal:content="content">
   </p>
   <br />
+  <input type="aaa" />
   <!-- this is comment -->
 </body>
 </html>

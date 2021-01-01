@@ -77,9 +77,9 @@ test "T2-4-1: can parse tal:repeat":  # {{{1
 
 
 test "T2-4-2: can parse tal:repeat 2 - mix contents":  # {{{1
-    var fp = newStringStream("""
-        <a tal:repeat="  i   repeat_src   ">
-        <b tal:content="repeat/i/number"></b>this</a>""".strip())
+    var fp = newStringStream(
+        "<a tal:repeat=\"  i   repeat_src   \">" &
+        "<b tal:content=\"repeat/i/number\"></b>this</a>")
     var answer = """<a><b>1</b>this</a>
                     <a><b>2</b>this</a>
                     <a><b>3</b>this</a>

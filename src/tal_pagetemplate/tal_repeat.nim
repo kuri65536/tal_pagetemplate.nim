@@ -67,30 +67,23 @@ proc tal_repeat_letters*(n: int): string =  # {{{1
 
 
 proc render_repeat_starttag(self: var TagRepeat,  # {{{1
-                            name: string, attrs: Attrs): string =
+                            name: string, attrs: var Attrs): string =
     if len(self.current.element_ignore) > 0:
         return ""
 
-    # TODO(shimoda): unified with normal parsing.
-    if attrs.hasKey("tal:define"):
-        var expr = attrs["tal:define"]
-        self.exprs.defvars(expr, self.path)  # TODO(shimoda): path in repeat
+    var (n, d) = self.exprs.render_starttag(self.path, name, attrs)
 
-    if attrs.hasKey("tal:replace"):
-        var expr = attrs["tal:replace"]
+    case n:
+    of tag_in_replace:
         self.current.element_ignore = name
-        return self.exprs.expr(expr)
-    if attrs.hasKey("tal:content"):
-        var ret = fmt"<{name}>"
-        var expr = attrs["tal:content"]
-        # TODO(shimoda): ret &= render_attrs(self.elem, "", attrs)
-        ret &= self.exprs.expr(expr)
-        ret &= "</" & name & ">"
+        return d
+    of tag_in_content:
         self.current.element_ignore = name
-        return ret
-
-    # TODO(shimoda): ret &= render_attrs(i.elem, "", i.attrs)
-    return fmt"<{name}>"
+        return d & render_endtag(name)
+    # TODO(shimoda): of tag_in_omit_tag:
+    else:
+        discard
+    return d
 
 
 proc render_repeat_endtag(self: var TagRepeat, name: string): string =  # {{{1
@@ -98,16 +91,13 @@ proc render_repeat_endtag(self: var TagRepeat, name: string): string =  # {{{1
         self.current.element_ignore = ""
         return ""
 
-    return fmt"</{name}>"
+    return render_endtag(name)
 
 
 proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
                                 var_repeat: RepeatVars): string =
-    proc new_attrs(): Attrs =
-        return initOrderedTable[string, string]()
-
     var stack: seq[string] = @[]
-    var attrs = new_attrs()
+    var attrs = newAttrs()
     var ret = ""
     for i in self.xml:
         debg(fmt"looping: {$i.kind}-{ret}")
@@ -116,10 +106,10 @@ proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
             ret &= self.render_repeat_endtag(i.data)
         of xmlElementStart, xmlElementClose:
             var d = self.render_repeat_starttag(i.data, attrs)
-            attrs = new_attrs()
+            attrs = newAttrs()
             ret &= d
         of xmlElementOpen:
-            attrs = new_attrs()
+            attrs = newAttrs()
         of xmlAttribute:
             var seq = i.data.split("\t")
             if len(seq) > 1:
@@ -132,18 +122,9 @@ proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
         of xmlWhitespace:
             if len(self.current.element_ignore) < 1:
                 ret &= i.data
-        of xmlCData:
-            if len(self.current.element_ignore) < 1:
-                ret &= i.data
-        of xmlSpecial:
-            if len(self.current.element_ignore) < 1:
-                ret &= i.data
         of xmlEntity:
             if len(self.current.element_ignore) < 1:
                 ret &= i.data
-        of xmlComment:
-            if len(self.current.element_ignore) < 1:
-                ret &= fmt"<!-- {i.data} -->"
         of xmlPI:
             ret &= i.data
         else:
@@ -218,14 +199,14 @@ proc parse_tree*(self: var TagRepeat, x: XmlParser  # {{{1
         self.parse_push(x.kind, self.elem_prev)
     of xmlAttribute:
         self.parse_push(x.kind, x.attrKey & "\t" & x.attrValue)
-    of xmlCharData, xmlWhitespace, xmlCData, xmlSpecial:
-        self.parse_push(x.kind, x.charData)
+    of xmlCharData, xmlWhitespace:
+        self.parse_push(xmlCharData, x.charData)
     of xmlEntity:
-        self.parse_push(x.kind, x.entityName)
-    of xmlComment:
-        self.parse_push(x.kind, x.charData)  # "<!-- $1 -->"
-    of xmlPI:
-        self.parse_push(x.kind, fmt"<? {x.piName} ## {x.piRest} ?>")
+        self.parse_push(xmlCharData, render_entity(x.entityName))
+    of xmlCData:
+        self.parse_push(xmlCharData, render_cdata(x.charData))
+    of xmlComment, xmlSpecial, xmlPI:  # Special/PI was ignored now.
+        self.parse_push(xmlCharData, render_comment(x.charData))
     of xmlError:        echo(x.errorMsg())
     return (d, true)
 

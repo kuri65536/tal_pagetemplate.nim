@@ -43,8 +43,11 @@ TODO
 -----------------------------------------
 - enable the varibles from nim runtime informations, instead of JSON.
 - enable JSON string/ fields.
+- escape `;` by doubling
+- namespace in variables.
 - tal:on-error
 - i18n
+- parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
 - re-write tal:repeat and normal parse.
 
