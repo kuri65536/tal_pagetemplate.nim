@@ -27,7 +27,7 @@ type
     tag_in_i18n = "i18n:translate"
     tag_in_repeat    # repeat elements by args.
     tag_in_omit_tag  # tal:omit-tag
-    tag_in_notal     # otherwise
+    tag_in_notals    # otherwise
 
   RepeatStatus* = ref object of RootObj  # {{{1
     element_ignore*: string
@@ -47,6 +47,7 @@ type
     elem*, elem_prev*, path*: string
     name*, expr*: string
     attrs*: Attrs
+    f_omit_tag*: bool
     exprs*: TalExpr
     xml*: seq[TagRepeat0]
     current*: RepeatStatus
@@ -114,7 +115,7 @@ proc tales_bool_expr*(src: string): bool =  # {{{1
     # ??? met 5: etc
 
     let seq = src.replace(" ", "")
-    echo(fmt"tal-bool: {src}-{seq}")
+    debg(fmt"tal-bool: {src}-{seq}")
     if seq == "{}" or seq == "[]" or seq == "()":
         return false      # met 3-2: other empty sequences.
     # ??? met 4: a non-empty string or other sequence is `true`.
@@ -237,7 +238,8 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
 
 
 proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
-                      attrs: var Attrs): tuple[n: TagProcess, d: string] =
+                      attrs: var Attrs): tuple[n: set[TagProcess], d: string] =
+    var ret = {tag_in_notals}
     if attrs.hasKey("tal:define"):
         var expr = attrs["tal:define"]
         attrs.del("tal:define")
@@ -251,42 +253,51 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
         enter_i18n_domain(self.stacks_i18n, path, expr)
 
     if true:
+      let attr = "tal:omit-tag"
+      if attrs.hasKey(attr):
+        var expr = attrs[attr]
+        attrs.del(attr)
+        if len(expr) < 1:
+            ret.incl(tag_in_omit_tag)
+        else:
+            expr = self.expr(expr)
+            if not tales_bool_expr(expr):
+                ret.incl(tag_in_omit_tag)
+
+    if true:
       let attr = "tal:condition"
       if attrs.hasKey(attr):
         var expr = self.expr(attrs[attr])
         attrs.del(attr)
         if not tales_bool_expr(expr):
-            return (tag_in_replace, "")
+            return ({tag_in_replace}, "")
 
     if attrs.hasKey("tal:replace"):
         var expr = attrs["tal:replace"]
-        return (tag_in_replace, self.expr(expr))
+        return ({tag_in_replace}, self.expr(expr))
 
     if true:
       let attr = "tal:content"
       if attrs.hasKey(attr):
         var expr = self.tal_parse_content(attrs[attr])
-        return (tag_in_content, self.render_attrs(name, expr, attrs))
+        ret.incl(tag_in_content)
+        if ret.contains(tag_in_omit_tag):
+            return (ret, expr)
+        return (ret, self.render_attrs(name, expr, attrs))
 
     if true:
       let attr = $tag_in_i18n
       if attrs.hasKey(attr):
         var expr = render_i18n_trans(attrs[attr])
         attrs.del(attr)
-        return (tag_in_content, self.render_attrs(name, expr, attrs))
+        ret.incl(tag_in_content)
+        if ret.contains(tag_in_omit_tag):
+            return (ret, expr)
+        return (ret, self.render_attrs(name, expr, attrs))
 
-    if true:
-      let attr = "tal:omit-tag"
-      if attrs.hasKey(attr):
-        var expr = attrs[attr]
-        attrs.del(attr)
-        if len(expr) < 1:
-            return (tag_in_omit_tag, "")
-        expr = self.expr(expr)
-        if not tales_bool_expr(expr):
-            return (tag_in_omit_tag, "")
-
-    return (tag_in_notal, self.render_attrs(name, "", attrs))
+    if ret.contains(tag_in_omit_tag):
+        return (ret, "")
+    return (ret, self.render_attrs(name, "", attrs))
 
 
 # end of file {{{1

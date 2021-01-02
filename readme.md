@@ -48,15 +48,14 @@ TODO
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
 - metal features (low priority, it is too complex for me.)
-- tal expressions: `not`
-- tal expressions: `nocall`
 - tal expressions: `default`
 - tal expressions: `attrs`
 - tal expressions: `CONTEXTS`
 
 ### no plan to implement
 - `tal:on-error`
-- tal expressions: `python`
+- tal expressions: `python` - too complex...
+- tal expressions: `nocall` - no dynamic evaluations.
 - namespace in variables.
 
 

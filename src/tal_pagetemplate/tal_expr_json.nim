@@ -106,7 +106,7 @@ proc parse_expr_exists(self: TalVars, src: string, f_not: bool  # {{{1
     if src.strip() == "null":  # passing the null instance -> true.
         return make_ret(true)
     var tmp = self.parse_expr_path(src)
-    echo(fmt"expr-exists: {$tmp}-{f_not}")
+    debg(fmt"expr-exists: {$tmp}-{f_not}")
     if $tmp != "null":
         return make_ret(true)
     return make_ret(false)

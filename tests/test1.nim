@@ -83,17 +83,16 @@ test "T2-2-3: can parse tal:content - from reference 2":  # {{{1
 
 
 test "T2-3-1: can parse tal:omit-tag":  # {{{1
-    discard #[ TODO(shimoda): disabled now
     var fp = newStringStream("<a tal:omit-tag=\"\">this</a>")
-    check parse_all(fp) == ""
+    check parse_all(fp) == "this"
 
 
 test "T2-3-2: can parse tal:omit-tag 2 - nested":  # {{{1
     var fp = newStringStream("<a tal:omit-tag=\"\">this<b></b></a>")
-    check parse_all(fp) == ""
+    check parse_all(fp) == "this<b></b>"
 
     fp = newStringStream("<a tal:omit-tag=\"\">this<b></b><c a=\"2\"></c></a>")
-    check parse_all(fp) == ""
+    check parse_all(fp) == "this<b></b><c a=\"2\"></c>"
 
 
 test "T2-3-3: can parse tal:omit-tag 3 - from reference":  # {{{1
@@ -105,7 +104,7 @@ test "T2-3-3: can parse tal:omit-tag 3 - from reference":  # {{{1
 test "T2-3-4: can parse tal:omit-tag 4 - from reference 2":  # {{{1
     var fp = newStringStream("<b tal:omit-tag=\"not:bold\">" &
                              "  I may be bold.</b>")
-    check parse_all(fp) == "  I may be bold."
+    check parse_all(fp) == "<b>  I may be bold.</b>"
 
     fp = newStringStream("<a tal:define=\"bold 1\">" &
                          "<b tal:omit-tag=\"not:bold\">" &
@@ -118,7 +117,6 @@ test "T2-3-5: can parse tal:omit-tag 4 - from reference 3":  # {{{1
                              "      tal:omit-tag=\"\">" &
                              "<p tal:content=\"n\">1</p></span>")
     check parse_all(fp) == "<p>1</p><p>2</p><p>3</p><p>4</p><p>5</p>"
-    ]#
 
 
 test "T2-4-1: can parse tal:repeat":  # {{{1

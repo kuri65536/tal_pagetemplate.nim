@@ -71,30 +71,29 @@ proc start_tag(self: var LocalParser, tag: var TagStack): string =  # {{{1
     var (n, d) = self.exprs.render_starttag(
             self.stacks.xml_path(), tag.elem, attrs)
 
+    if n.contains(tag_in_omit_tag):
+        tag.flags.incl(tag_in_omit_tag)
+
     if attrs.hasKey("tal:repeat"):
         var tmp = attrs
         tmp.del("tal:repeat")
         tag.flags.incl(tag_in_repeat)
         tag.repeat = self.parse_repeat(tag.elem, attrs["tal:repeat"], attrs)
+        if n.contains(tag_in_omit_tag):
+            tag.repeat.f_omit_tag = true
         return ""
 
-    case n:
-    of tag_in_replace:
+    if n.contains(tag_in_replace):
         tag.flags.incl(n)
         return d
-    of tag_in_content:
+    if n.contains(tag_in_content):
         tag.flags.incl(n)
         return d
-    of tag_in_omit_tag:
-        tag.flags.incl(tag_in_replace)
-        return ""
-    else:
-        discard
     return d
 
 
 proc end_tag(self: var LocalParser, name: string): string =  # {{{1
-    if self.check_current({tag_in_replace}):
+    if self.check_current({tag_in_replace, tag_in_omit_tag}):
         return ""
     var ret = render_endtag(name)
 

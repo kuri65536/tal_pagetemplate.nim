@@ -66,23 +66,21 @@ proc tal_repeat_letters*(n: int): string =  # {{{1
     return ret
 
 
-proc render_repeat_starttag(self: var TagRepeat,  # {{{1
+proc render_in_repeat_starttag(self: var TagRepeat,  # {{{1
                             name: string, attrs: var Attrs): string =
     if len(self.current.element_ignore) > 0:
         return ""
 
     var (n, d) = self.exprs.render_starttag(self.path, name, attrs)
 
-    case n:
-    of tag_in_replace:
+    if n.contains(tag_in_replace):
         self.current.element_ignore = name
         return d
-    of tag_in_content:
+    if n.contains(tag_in_content):
         self.current.element_ignore = name
+        if n.contains(tag_in_omit_tag):
+            return d
         return d & render_endtag(name)
-    # TODO(shimoda): of tag_in_omit_tag:
-    else:
-        discard
     return d
 
 
@@ -104,7 +102,7 @@ proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
         of xmlElementEnd:
             ret &= self.render_repeat_endtag(i.data)
         of xmlElementStart, xmlElementClose:
-            var d = self.render_repeat_starttag(i.data, attrs)
+            var d = self.render_in_repeat_starttag(i.data, attrs)
             attrs = newAttrs()
             ret &= d
         of xmlElementOpen:
@@ -130,13 +128,8 @@ proc parse_push(self: var TagRepeat, kind: XmlEventKind, data: string  # {{{1
 
 proc render_repeat_tag_start(self: TagRepeat, vars: RepeatVars  # {{{1
                              ): tuple[f: bool, d: string] =
-    if self.attrs.hasKey("tal:omit-tag"):
-        var expr = self.attrs["tal:omit-tag"]
-        if len(expr) < 1:
-            return (false, "")
-        expr = self.exprs.expr(expr)
-        if not tales_bool_expr(expr):
-            return (false, "")
+    if self.f_omit_tag:
+        return (true, "")
 
     # ignore tal:replace
 
@@ -173,7 +166,8 @@ proc parse_tagend(self: var TagRepeat, name: string  # {{{1
         tags &= d
         if f:
             tags &= self.parse_tagend_render_repeat(i)
-        tags &= fmt"</{self.elem}>"
+        if not self.f_omit_tag:
+            tags &= fmt"</{self.elem}>"
         i = iter()
     return (tags, false)
 
