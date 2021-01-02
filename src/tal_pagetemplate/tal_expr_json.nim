@@ -9,6 +9,7 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#  # import {{{1
 import json
+import strformat
 import strutils
 import tables
 
@@ -43,6 +44,14 @@ proc to_jsonnode(self: RepeatVars): JsonNode =  # {{{1
     ret.add("roman", newJString(self.roman))
     ret.add("Roman", newJString(self.Roman))
     return ret
+
+
+proc json_to_string(self: JsonNode): string =  # {{{1
+    case self.kind:
+    of JString:
+        return self.str
+    else:
+        return $self
 
 
 proc parse_expr_hier(self: JsonNode, parts: seq[string]): JsonNode =  # {{{1
@@ -95,7 +104,37 @@ proc parse_expr_nocall(self: TalVars, src: string): JsonNode =  # {{{1
 
 
 proc parse_expr_string(self: TalVars, src: string): JsonNode =  # {{{1
-    return newJString(src)
+    proc parse_path(expr: string): string =
+        var json = self.parse_expr_path(expr)
+        return json_to_string(json)
+
+    var (ret, expr, start) = ("", "", "")
+    for ch in src:
+        echo(fmt"expr-string: {ch} -> {ret}-{expr}-{start}")
+        if start == "$":
+            if {'$', ' ', '\t', '\n'}.contains(ch):
+                if len(expr) < 1:
+                    (start, expr, ret) = ("", "", ret & $ch)
+                else:
+                    var tmp = parse_path(expr)
+                    (start, expr, ret) = ("", "", ret & tmp & $ch)
+            elif len(expr) < 1 and ch == '{':
+                start = "${"
+            else:
+                expr &= $ch
+        elif len(start) > 0 and ch == '}':  # ${
+            var tmp = parse_path(expr)
+            (start, expr, ret) = ("", "", ret & tmp)
+        elif len(start) > 0:                # ${
+            expr &= $ch
+        elif ch == '$':
+            (start, expr) = ("$", "")
+        else:
+            ret &= $ch
+    if len(expr) > 0:  # met eol in expression
+        ret &= parse_path(expr)
+    echo(fmt"expr-string: {ret}")
+    return newJString(ret)
 
 
 proc parse_expr_python(self: TalVars, src: string): JsonNode =  # {{{1
