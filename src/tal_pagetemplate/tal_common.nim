@@ -14,6 +14,8 @@ import strformat
 import strutils
 import tables
 
+import tal_i18n
+
 
 type
   Attrs* = OrderedTable[string, string]  # {{{1
@@ -21,6 +23,7 @@ type
   TagProcess* {.size: sizeof(cint).}= enum  # {{{1
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
+    tag_in_i18n = "i18n:translate"
     tag_in_repeat    # repeat elements by args.
     tag_in_omit_tag  # tal:omit-tag
     tag_in_notal     # otherwise
@@ -155,6 +158,8 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
             continue
         if k == "tal:content":
             continue
+        if k == $tag_in_i18n:
+            continue
         if k == "tal:repeat":
             continue
         if k == "tal:attributes":
@@ -186,6 +191,11 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
     if attrs.hasKey("tal:content"):
         var expr = attrs["tal:content"]
         expr = self.expr(expr)
+        return (tag_in_content, self.render_attrs(name, expr, attrs))
+
+    if attrs.hasKey($tag_in_i18n):
+        var expr = attrs[$tag_in_i18n]
+        expr = render_i18n_trans(expr)
         return (tag_in_content, self.render_attrs(name, expr, attrs))
 
     if attrs.hasKey("tal:omit-tag"):

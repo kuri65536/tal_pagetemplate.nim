@@ -46,10 +46,10 @@ TODO
 - escape `;` by doubling
 - namespace in variables.
 - tal:on-error
-- i18n
+- i18n:translate
+- i18n:domain
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
-- re-write tal:repeat and normal parse.
 
 
 Development Environment

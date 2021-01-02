@@ -96,7 +96,6 @@ proc render_repeat_endtag(self: var TagRepeat, name: string): string =  # {{{1
 
 proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
                                 var_repeat: RepeatVars): string =
-    var stack: seq[string] = @[]
     var attrs = newAttrs()
     var ret = ""
     for i in self.xml:
@@ -116,18 +115,11 @@ proc parse_tagend_render_repeat(self: var TagRepeat,  # {{{1
                 attrs[seq[0]] = join(seq[1 ..^ 1], "\t")
             else:
                 echo "???"
-        of xmlCharData:
+        of xmlCData, xmlCharData, xmlComment, xmlEntity,
+           xmlSpecial, xmlPI, xmlWhitespace:  # will not have except CharData
             if len(self.current.element_ignore) < 1:
                 ret &= i.data
-        of xmlWhitespace:
-            if len(self.current.element_ignore) < 1:
-                ret &= i.data
-        of xmlEntity:
-            if len(self.current.element_ignore) < 1:
-                ret &= i.data
-        of xmlPI:
-            ret &= i.data
-        else:
+        of xmlEof, xmlError:
             discard  # will not have Eof, Error.
     return ret
 

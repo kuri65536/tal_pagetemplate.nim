@@ -9,11 +9,15 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#
 import json
+import ospaths
 import streams
 import strutils
+import system
 import unittest
 
 import tal_pagetemplate
+import tal_pagetemplate/tal_i18n
+
 
 type
   Vars = ref object of RootObj
@@ -22,6 +26,9 @@ type
 
 proc parse_all(fp: Stream): string =  # {{{1
     # var vars = Vars(repeat_src: @[1, 2, 3, 4, 5])
+    var path = joinPath(parentDir(currentSourcePath), "catalog")
+    echo "open: " & path
+    setup_i18n("en", "utf-8", "test", path)
     var vars = newJObject()
     vars.add("repeat_src", % @[1, 2, 3, 4, 5])
     var fn = parse_template(fp, "", vars)
@@ -170,6 +177,12 @@ test "T2-6-1: can parse tal:attribute, simple and override":  # {{{1
                              " st=\"2\">next</lv2></lv1>")
     check parse_all(fp) == "<lv1 st=\"1\"><lv2 st=\"20\" hp=\"10\">" &
                            "next</lv2></lv1>"
+
+
+
+test "T2-7-1: can parse i18n:translate":  # {{{1
+    var fp = newStringStream("<test i18n:translate=\"1\">uno</test>")
+    check parse_all(fp) == "<test>one</test>"
 
 
 
