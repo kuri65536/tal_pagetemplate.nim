@@ -79,14 +79,38 @@ proc debg*(msg: string): void =  # {{{1
     discard
 
 
-proc is_true(src: string): bool =  # {{{1
-    # TODO(shimoda): check official TAL docs.
-    var i = src.strip().toLower()
-    if src == "yes":
-        return true
-    if src == "true":
-        return true
-    return false
+proc tales_bool_expr*(src: string): bool =  # {{{1
+    let src = src.strip()
+    try:
+        var n = parseInt(src)
+        if n != 0:
+            return true   # met 2: pos and neg numbers are `true`
+        return false      # met 1: the number 0 is `false`
+    except ValueError:
+        discard
+
+    if src == "nothing":
+        return false      # met 5: a non-value is `false`
+    if src == "void":
+        return false      # met 5: ...
+    if src == "None":
+        return false      # met 5: ...
+    if src == "Nil":
+        return false      # met 5: ...
+    if src == "NULL":
+        return false      # met 5: ...
+    if src == "nil":
+        return false      # met 6: implementation-dependent
+    # ??? met 5: etc
+
+    if len(src) < 1:
+        return false      # met 3-1: an empty string
+    let seq = src.replace(" ", "")
+    if src == "{}" or src == "[]" or src == "()":
+        return false      # met 3-2: other empty sequences.
+    # ??? met 4: a non-empty string or other sequence is `true`.
+    # ??? met 6: all other values are implementation-dependent
+    return true
 
 
 proc render_endtag*(src: string): string =  # {{{1
@@ -118,14 +142,6 @@ proc xml_path*(src: seq[TagStack]): string =  # {{{1
     for i in src:
         ret = i.elem & "-" & ret
     return ret
-
-
-proc tal_omit_tag_is_enabled*(src: string): bool =  # {{{1
-    if src == "":
-        return true
-    if is_true(src):
-        return true
-    return false
 
 
 proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # {{{1
@@ -184,11 +200,20 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
         attrs.del("tal:define")
         self.defvars(expr, path)  # TODO(shimoda): path in repeat
 
-    let attr = "i18n:domain"
-    if attrs.hasKey(attr):
+    if true:
+      let attr = "i18n:domain"
+      if attrs.hasKey(attr):
         var expr = attrs[attr]
         attrs.del(attr)
         enter_i18n_domain(self.stacks_i18n, path, expr)
+
+    if true:
+      let attr = "tal:condition"
+      if attrs.hasKey(attr):
+        var expr = self.expr(attrs[attr])
+        attrs.del(attr)
+        if not tales_bool_expr(expr):
+            return (tag_in_replace, "")
 
     if attrs.hasKey("tal:replace"):
         var expr = attrs["tal:replace"]
@@ -204,10 +229,15 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
         expr = render_i18n_trans(expr)
         return (tag_in_content, self.render_attrs(name, expr, attrs))
 
-    if attrs.hasKey("tal:omit-tag"):
-        var expr = attrs["tal:omit-tag"]
+    if true:
+      let attr = "tal:omit-tag"
+      if attrs.hasKey(attr):
+        var expr = attrs[attr]
+        attrs.del(attr)
+        if len(expr) < 1:
+            return (tag_in_omit_tag, "")
         expr = self.expr(expr)
-        if tal_omit_tag_is_enabled(expr):
+        if not tales_bool_expr(expr):
             return (tag_in_omit_tag, "")
 
     return (tag_in_notal, self.render_attrs(name, "", attrs))

@@ -77,6 +77,30 @@ test "T2-3-2: can parse tal:omit-tag 2 - nested":  # {{{1
     check parse_all(fp) == ""
 
 
+test "T2-3-3: can parse tal:omit-tag 3 - from reference":  # {{{1
+    var fp = newStringStream("<div tal:omit-tag=\"\" comment=\"t\">" &
+                             "<i>...but this text will remain.</i></div>")
+    check parse_all(fp) == "<i>...but this text will remain.</i>"
+
+
+test "T2-3-4: can parse tal:omit-tag 4 - from reference 2":  # {{{1
+    var fp = newStringStream("<b tal:omit-tag=\"not:bold\">" &
+                             "  I may be bold.</b>")
+    check parse_all(fp) == "  I may be bold."
+
+    fp = newStringStream("<a tal:define=\"bold 1\">" &
+                         "<b tal:omit-tag=\"not:bold\">" &
+                         "  I may be bold.</b></a>")
+    check parse_all(fp) == "<a>  I may be bold.</a>"
+
+
+test "T2-3-4: can parse tal:omit-tag 4 - from reference 3":  # {{{1
+    var fp = newStringStream("<span tal:repeat=\"n repeat_src\"" &
+                             "      tal:omit-tag=\"\">" &
+                             "<p tal:content=\"n\">1</p></span>")
+    check parse_all(fp) == "<p>1</p><p>2</p><p>3</p><p>4</p><p>5</p>"
+
+
 test "T2-4-1: can parse tal:repeat":  # {{{1
     var fp = newStringStream("<a tal:repeat=\"i repeat_src\" " &
                              "tal:content=\"repeat/i/number\">this</a>")
@@ -191,6 +215,12 @@ test "T2-8-1: can parse i18n:domain":  # {{{1
                              " i18n:translate=\"2\">bel</anot>" &
                              "<test2 i18n:translate=\"1\">uno</test2>")
     check parse_all(fp) == "<test>two</test><anot>ni</anot><test2>one</test2>"
+
+
+test "T2-9-1: can parse tal:condition":  # {{{1
+    var fp = newStringStream("<div tal:condition=\"1\">1</div>" &
+                             "<div tal:condition=\"0\">2</div>")
+    check parse_all(fp) == "<div>1</div>"
 
 
 # end of file {{{1

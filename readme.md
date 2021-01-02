@@ -16,6 +16,7 @@ but I refer the behavior of TAL in official TAL document::
 Requirements
 -----------------------------------------
 - nim (>= 0.19.4)
+- nim-i18n (>= 0.1.2)
 - xml of PTAL
 - json for variables
 
@@ -44,10 +45,17 @@ TODO
 - enable the varibles from nim runtime informations, instead of JSON.
 - enable JSON string/ fields.
 - escape `;` by doubling
-- namespace in variables.
-- tal:on-error
+- escaping contents
+- prefix `structured`
+- `tal:condition`
+- tal expressions: string
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
+
+### no plan to implement
+- `tal:on-error`
+- tal expressions: `python`
+- namespace in variables.
 
 
 Development Environment

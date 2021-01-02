@@ -58,10 +58,12 @@ for i in countup(1, paramCount()):
         continue
     echo(fmt"options: ignored {arg}...")
 
-if len(fname_vars) < 1:
+if len(fname_xml) < 1:
     help_text()
 
-var vars = json.parseFile(fname_vars)
+var vars = newJObject()
+if len(fname_vars) > 0:
+    vars = json.parseFile(fname_vars)
 var fp: Stream
 if len(fname_xml) > 0:
     fp = newFileStream(fname_xml, fmRead)

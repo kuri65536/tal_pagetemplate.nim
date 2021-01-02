@@ -132,8 +132,10 @@ proc render_repeat_tag_start(self: TagRepeat, vars: RepeatVars  # {{{1
                              ): tuple[f: bool, d: string] =
     if self.attrs.hasKey("tal:omit-tag"):
         var expr = self.attrs["tal:omit-tag"]
+        if len(expr) < 1:
+            return (false, "")
         expr = self.exprs.expr(expr)
-        if tal_omit_tag_is_enabled(expr):
+        if not tales_bool_expr(expr):
             return (false, "")
 
     # ignore tal:replace
