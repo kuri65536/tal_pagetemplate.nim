@@ -212,7 +212,7 @@ iterator parse_repeat_seq*(self: var TalVars, name, path, src: string  # {{{1
 
 proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1
                    expr, path: string): void =
-    for src in expr.split(";"):
+    for src in tal_parse_multi_statements(expr):
         var src = src.strip()
         var f_local = true
         if src.startsWith("local "):

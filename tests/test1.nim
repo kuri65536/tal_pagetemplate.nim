@@ -112,7 +112,7 @@ test "T2-3-4: can parse tal:omit-tag 4 - from reference 2":  # {{{1
     check parse_all(fp) == "<a>  I may be bold.</a>"
 
 
-test "T2-3-4: can parse tal:omit-tag 4 - from reference 3":  # {{{1
+test "T2-3-5: can parse tal:omit-tag 4 - from reference 3":  # {{{1
     var fp = newStringStream("<span tal:repeat=\"n repeat_src\"" &
                              "      tal:omit-tag=\"\">" &
                              "<p tal:content=\"n\">1</p></span>")

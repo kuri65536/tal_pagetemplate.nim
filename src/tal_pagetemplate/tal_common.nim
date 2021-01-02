@@ -129,6 +129,27 @@ proc tal_parse_content(self: TalExpr, src: string): string =  # {{{1
     return ret
 
 
+iterator tal_parse_multi_statements*(src: string): string =  # {{{1
+    var (expr, f_prev_delim) = ("", false)
+    for ch in src:
+        if ch == ';':
+            if f_prev_delim:
+                expr &= $ch
+                f_prev_delim = false  # escaped by doubled ';'
+            else:
+                f_prev_delim = true
+        elif f_prev_delim:
+            debg("tal_parse_multi_statements: " & expr)
+            yield expr
+            expr = $ch
+            f_prev_delim = false
+        else:
+            expr &= $ch
+    if len(expr) > 0:
+        debg("tal_parse_multi_statements: " & expr)
+        yield expr
+
+
 proc render_endtag*(src: string): string =  # {{{1
     return fmt"</{src}>"
 
@@ -172,7 +193,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
         var expr = attrs[attr]
         attrs.del(attr)
         debg(fmt"tal:attributes -> {expr}")
-        for src in expr.split(";"):
+        for src in tal_parse_multi_statements(expr):
             debg(fmt"tal:attributes -> {src}")
             # TODO(shimoda): escape `;` by doubling.
             var src = src.strip()
