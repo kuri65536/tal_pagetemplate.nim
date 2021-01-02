@@ -43,6 +43,12 @@ proc parse_all(fp: Stream): string =  # {{{1
     # for test: 3-1-3
     vars.add("cost", %42.0)
 
+    # for test: 3-3-1
+    tmp1 = newJObject()
+    tmp1.add("objectIds", % @["1", "2", "3"])
+    vars.add("context", tmp1)
+    vars.add("empty_sequence", % @[])
+
     var fn = parse_template(fp, "", vars)
     var ret = ""
     while not finished(fn):
@@ -78,6 +84,23 @@ test "T3-2-1: can parse exists - from reference":  # {{{1
                          "exists:request/form/number\">" &
                          "  Please enter a number between 0 and 5</p>")
     check parse_all(fp) == "<p>  Please enter a number between 0 and 5</p>"
+
+
+test "T3-3-1: can parse not - from reference - testing sequences":  # {{{1
+    var fp = newStringStream("<p tal:condition=\"" &
+                             "not:context/objectIds\">" &
+                             "  There are no contained objects</p>")
+    check parse_all(fp) == ""
+
+    fp = newStringStream("<p tal:condition=\"" &
+                         "context/objectIds\">" &
+                         "  There are no contained objects</p>")
+    check parse_all(fp) == "<p>  There are no contained objects</p>"
+
+    fp = newStringStream("<p tal:condition=\"" &
+                             "empty_sequence\">" &
+                             "  There are no contained objects</p>")
+    check parse_all(fp) == ""
 
 
 # end of file {{{1

@@ -86,6 +86,10 @@ proc tales_bool_expr*(src: string): bool =  # {{{1
         return true
     if src == "false":
         return false
+    if len(src) < 1:
+        return false      # met 3-1: an empty string
+    if src == "null":
+        return false     # met 6: all other values are implementation-dependent
 
     try:
         var n = parseInt(src)
@@ -109,14 +113,11 @@ proc tales_bool_expr*(src: string): bool =  # {{{1
         return false      # met 6: implementation-dependent
     # ??? met 5: etc
 
-    echo(fmt"tal-bool: {src}")
-    if len(src) < 1:
-        return false      # met 3-1: an empty string
     let seq = src.replace(" ", "")
-    if src == "{}" or src == "[]" or src == "()":
+    echo(fmt"tal-bool: {src}-{seq}")
+    if seq == "{}" or seq == "[]" or seq == "()":
         return false      # met 3-2: other empty sequences.
     # ??? met 4: a non-empty string or other sequence is `true`.
-    # ??? met 6: all other values are implementation-dependent
     return true
 
 

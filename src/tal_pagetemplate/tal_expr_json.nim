@@ -123,7 +123,7 @@ proc parse_expr_string(self: TalVars, src: string): JsonNode =  # {{{1
 
     var (ret, expr, start) = ("", "", "")
     for ch in src:
-        echo(fmt"expr-string: {ch} -> {ret}-{expr}-{start}")
+        debg(fmt"expr-string: {ch} -> {ret}-{expr}-{start}")
         if start == "$":
             if {'$', ' ', '\t', '\n'}.contains(ch):
                 if len(expr) < 1:
@@ -146,7 +146,7 @@ proc parse_expr_string(self: TalVars, src: string): JsonNode =  # {{{1
             ret &= $ch
     if len(expr) > 0:  # met eol in expression
         ret &= parse_path(expr)
-    echo(fmt"expr-string: {ret}")
+    debg(fmt"expr-string: {ret}")
     return newJString(ret)
 
 
@@ -169,10 +169,11 @@ proc parse_expr_python(self: TalVars, src: string): JsonNode =  # {{{1
 
 
 proc parse_expr_local(self: TalVars, src: string): JsonNode =  # {{{1
-    var (f_not, src) = (false, src.strip(leading=true, trailing=false))
+    var (n_not, src) = (0, src.strip(leading=true, trailing=false))
     while src.startsWith("not:"):
         src = src[4 ..^ 1].strip(leading=true, trailing=false)
-        f_not = not f_not
+        n_not += 1
+    var f_not = (n_not mod 2) == 1
 
     if src.startsWith("python:"):
         return self.parse_expr_python(src[7 ..^ 1])
@@ -186,7 +187,12 @@ proc parse_expr_local(self: TalVars, src: string): JsonNode =  # {{{1
     var src0 = src
     if src.startsWith("path:"):
         src0 = src[5 ..^ 1]
-    return self.parse_expr_path(src0)
+    var ret = self.parse_expr_path(src0)
+    if n_not > 0:
+        var ret_bool = tales_bool_expr($ret)
+        if f_not: ret_bool = not ret_bool
+        return newJBool(ret_bool)
+    return ret
 
 
 proc parse_expr*(self: TalVars, src: string): string =  # {{{1

@@ -48,7 +48,7 @@ TODO
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
 - metal features (low priority, it is too complex for me.)
-- tal expressions: `exists`
+- tal expressions: `not`
 - tal expressions: `nocall`
 - tal expressions: `default`
 - tal expressions: `attrs`
