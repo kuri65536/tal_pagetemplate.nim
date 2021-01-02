@@ -47,7 +47,7 @@ TODO
 - escape `;` by doubling
 - escaping contents
 - prefix `structured`
-- `tal:condition`
+- `tal:omit-tag` wrong implementation now.
 - tal expressions: string
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.

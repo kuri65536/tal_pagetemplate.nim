@@ -151,6 +151,8 @@ proc parse_tagend(self: var LocalParser, name: string): string =  # {{{1
         discard
     elif self.stacks[0].elem == name:
         self.stacks.delete(0)
+    elif self.check_current({tag_in_content}):
+        ret = ""
     debg(fmt"</>: {self.curr_pos}-{self.last_pos}")
     return ret
 

@@ -13,6 +13,7 @@ import parsexml
 import strformat
 import strutils
 import tables
+import xmltree
 
 import tal_i18n
 
@@ -113,6 +114,21 @@ proc tales_bool_expr*(src: string): bool =  # {{{1
     return true
 
 
+proc tal_parse_content(self: TalExpr, src: string): string =  # {{{1
+    var src = src.strip()
+    var f_escape = true
+    if src.startsWith("text "):
+        src = src[5 ..^ 1]
+    elif src.startsWith("structure "):
+        f_escape = false
+        src = src[10 ..^ 1]
+
+    var ret = self.expr(src)
+    if f_escape:
+        ret = xmltree.escape(ret)
+    return ret
+
+
 proc render_endtag*(src: string): string =  # {{{1
     return fmt"</{src}>"
 
@@ -147,10 +163,14 @@ proc xml_path*(src: seq[TagStack]): string =  # {{{1
 proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # {{{1
     let format = "<$1>"
     if len(attrs) < 1:
-        return format.replace("$1", elem)
+        return format.replace("$1", elem) & sfx
     var replaces = newAttrs()
-    if attrs.hasKey("tal:attributes"):
-        var expr = attrs["tal:attributes"]
+    var attrs = attrs
+    if true:
+      var attr = "tal:attributes"
+      if attrs.hasKey(attr):
+        var expr = attrs[attr]
+        attrs.del(attr)
         debg(fmt"tal:attributes -> {expr}")
         for src in expr.split(";"):
             debg(fmt"tal:attributes -> {src}")
@@ -169,16 +189,11 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     debg(fmt"start_tag: {attrs}")
     var ret = format.replace("$1>", elem)
     for k, v in attrs.pairs():
+        # tal:*** are removed from `Attrs` before entering to this function.
         # TODO(shimoda): remove `continue` by removing items from `Attrs`.
-        if k == "tal:define":
-            continue
         if k == "tal:content":
             continue
-        if k == $tag_in_i18n:
-            continue
         if k == "tal:repeat":
-            continue
-        if k == "tal:attributes":
             continue
         var v = v
         if replaces.hasKey(k):
@@ -219,14 +234,17 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
         var expr = attrs["tal:replace"]
         return (tag_in_replace, self.expr(expr))
 
-    if attrs.hasKey("tal:content"):
-        var expr = attrs["tal:content"]
-        expr = self.expr(expr)
+    if true:
+      let attr = "tal:content"
+      if attrs.hasKey(attr):
+        var expr = self.tal_parse_content(attrs[attr])
         return (tag_in_content, self.render_attrs(name, expr, attrs))
 
-    if attrs.hasKey($tag_in_i18n):
-        var expr = attrs[$tag_in_i18n]
-        expr = render_i18n_trans(expr)
+    if true:
+      let attr = $tag_in_i18n
+      if attrs.hasKey(attr):
+        var expr = render_i18n_trans(attrs[attr])
+        attrs.del(attr)
         return (tag_in_content, self.render_attrs(name, expr, attrs))
 
     if true:

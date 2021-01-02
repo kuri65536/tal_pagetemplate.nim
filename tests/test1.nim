@@ -31,6 +31,12 @@ proc parse_all(fp: Stream): string =  # {{{1
 
     var vars = newJObject()
     vars.add("repeat_src", % @[1, 2, 3, 4, 5])
+    var subobj = newJObject()
+    subobj.add("getUserName", %"shimoda <kuri65536@hotmail.com>")
+    vars.add("user", subobj)
+    subobj = newJObject()
+    subobj.add("getStory", %"this is <em>markup'ed</em> content")
+    vars.add("context", subobj)
     var fn = parse_template(fp, "", vars)
     var ret = ""
     while not finished(fn):
@@ -62,6 +68,18 @@ test "T2-1-1: can parse tal:replace":  # {{{1
 test "T2-2-1: can parse tal:content":  # {{{1
     var fp = newStringStream("<a tal:content=\"1\">this</a>")
     check parse_all(fp) == "<a>1</a>"
+
+
+test "T2-2-2: can parse tal:content - from reference":  # {{{1
+    var fp = newStringStream("<p tal:content=\"user/getUserName\">" &
+                             "Fred Farkas</p>")
+    check parse_all(fp) == "<p>shimoda &lt;kuri65536@hotmail.com&gt;</p>"
+
+
+test "T2-2-3: can parse tal:content - from reference 2":  # {{{1
+    var fp = newStringStream("<p tal:content=\"structure context/getStory\">" &
+                             "  marked <b>up</b> content go here.</p>")
+    check parse_all(fp) == "<p>this is <em>markup'ed</em> content</p>"
 
 
 test "T2-3-1: can parse tal:omit-tag":  # {{{1
