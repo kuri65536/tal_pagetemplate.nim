@@ -25,7 +25,7 @@ when true:  # TODO(shimoda): i18n macro on/off
   proc enter_i18n_domain*(stacks: var seq[tuple[path, domain: string]],  # {{{1
                           path, domain: string): void =
     stacks.insert((path, domain), 0)
-    echo(path, ":", domain)
+    # echo(path, ":", domain)
     i18n.setTextDomain(domain)
 
 

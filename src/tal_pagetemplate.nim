@@ -54,7 +54,7 @@ proc parse_repeat(self: LocalParser, elem, src: string, attrs: Attrs  # {{{1
             expr = expr & " " & i
     if len(expr) > 0:
         expr = expr[1 ..^ 1]  # remove left space.
-    # echo fmt"repeat -> {name}-{expr}"
+    debg(fmt"repeat -> {name}-{expr}")
     var path = self.stacks.xml_path()
     return initTagRepeat(elem, path, name, expr, attrs, self.exprs)
 
@@ -141,11 +141,6 @@ proc parse_tagclose(self: var LocalParser): string =  # {{{1
 
 proc parse_attr(self: var LocalParser, name, value: string): string =  # {{{1
     self.stacks[0].attrs.add(name, value)
-    #[
-    var attrs = self.stack_attrs[0]
-    attrs.add(name, value)
-    echo(fmt"found attr {attrs}")
-    ]#
     debg(fmt"found attr {self.stacks[0].attrs}")
     return ""  # wait for close
 
@@ -203,7 +198,7 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
             of xmlEntity:       d = parser.through(render_entity(x.entityName))
             of xmlPI:         d = parser.through(render_pi(x.piName, x.piRest))
             of xmlSpecial:      d = parser.through(render_special(x.charData))
-            of xmlError:        echo(x.errorMsg())
+            of xmlError:        stderr.write(x.errorMsg() & "\n")
             of xmlEof:
                 break # end of file reached
 

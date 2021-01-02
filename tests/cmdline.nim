@@ -40,7 +40,8 @@ for i in countup(1, paramCount()):
     if f_next_is_i18n:
         var seq = arg.split(",")
         if len(seq) == 4:
-            echo("registerd i18n:domaon-", seq[2], " in:", seq[3])
+            stderr.write(
+                    fmt"registerd i18n:domaon-{seq[2]} in:{seq[3]}" & "\n")
             setup_i18n(seq[0], seq[1], seq[2], seq[3])
         else:
             help_text()

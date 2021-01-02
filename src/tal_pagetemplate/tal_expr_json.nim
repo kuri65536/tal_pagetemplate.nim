@@ -49,8 +49,19 @@ proc parse_expr_hier(self: JsonNode, parts: seq[string]): JsonNode =  # {{{1
     if len(parts) < 1:
         var obj = self
         return obj
-    if self.hasKey(parts[0]):
-        return parse_expr_hier(self[parts[0]], parts[1 ..^ 1])
+    var part = parts[0]
+    if self.kind == JArray:
+        try:
+            var n = parseInt(part)
+            if n < len(self.elems):
+                return parse_expr_hier(self[n], parts[1 ..^ 1])
+        except ValueError:
+            discard
+        return newJNull()
+    if self.kind != JObject:
+        return newJNull()
+    if self.hasKey(part):
+        return parse_expr_hier(self[part], parts[1 ..^ 1])
     return newJNull()
 
 

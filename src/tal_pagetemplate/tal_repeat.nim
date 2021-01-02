@@ -199,7 +199,8 @@ proc parse_tree*(self: var TagRepeat, x: XmlParser  # {{{1
         self.parse_push(xmlCharData, render_cdata(x.charData))
     of xmlComment, xmlSpecial, xmlPI:  # Special/PI was ignored now.
         self.parse_push(xmlCharData, render_comment(x.charData))
-    of xmlError:        echo(x.errorMsg())
+    of xmlError:
+        stderr.write(x.errorMsg() & "\n")
     return (d, true)
 
 
