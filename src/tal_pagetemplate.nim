@@ -16,13 +16,15 @@ import strformat
 import tables
 import typeinfo
 
-when false:
-    import tal_expr
-else:
-    import tal_pagetemplate/tal_expr_json
 import tal_pagetemplate/tal_common
+import tal_pagetemplate/tal_expr
 import tal_pagetemplate/tal_repeat
 import tal_pagetemplate/tal_i18n
+
+when defined(use_runtime):
+    import tal_pagetemplate/tal_expr_runtime
+else:
+    import tal_pagetemplate/tal_expr_json
 
 
 type

@@ -29,10 +29,10 @@ $ sudo apt intall nim
 
 How to use
 -----------------------------------------
-use for your nim project, install from nimble and import this.
+use from your nim project, install from nimble and import this.
 
 ```shell
-$ nimble https://github.com/kuri65536/tal_pagetemplate.nim
+$ nimble install https://github.com/kuri65536/tal_pagetemplate.nim
 ```
 
 ```nim
@@ -40,11 +40,19 @@ import tal_pagetemplate
 ```
 
 
+also can use from command line,
+
+```shell
+$ nim c -o=nimptal tests/cmdline.nim
+$ ./nimptal test.xml
+...output...
+```
+
+
 TODO
 -----------------------------------------
 - enable the varibles from nim runtime informations, instead of JSON.
 - enable JSON string/ fields.
-- `tal:omit-tag` wrong implementation now.
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
 - metal features (low priority, it is too complex for me.)
@@ -71,7 +79,7 @@ Development Environment
 
 Reference
 -----------------------------------------
-- T.B.D.
+- https://pagetemplates.readthedocs.io/en/latest/tal.html
 
 
 License
@@ -84,11 +92,34 @@ sample outputs
 test xml::
 
 ```xml
+<!DOCTYPE HTML>
+<html>
+<head>
+</head>
+<body>
+  <p tal:content="content">
+  </p>
+  <br />
+  <input type="aaa" />
+  <!-- this is comment -->
+</body>
+</html>
 ```
 
 its output::
 
 ```xml
+<!DOCTYPE HTML>
+<html>
+<head>
+</head>
+<body>
+  <p>1</p>
+  <br></br>
+  <input type="aaa"></input>
+  <!-- this is comment -->
+</body>
+</html>
 ```
 
 

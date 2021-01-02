@@ -67,10 +67,10 @@ type
     stacks_i18n*: seq[tuple[path, domain: string]]
 
   TalVars* = ref object of RootObj  # {{{1
-    when true:
-        root*: Table[string, tuple[path: string, obj: JsonNode]]
+    when defined(use_runtime):
+        root*: Table[string, tuple[path: string, obj: any]]
     else:
-        root*: any
+        root*: Table[string, tuple[path: string, obj: JsonNode]]
 
 
 proc newAttrs*(): Attrs =  # {{{1
@@ -79,6 +79,51 @@ proc newAttrs*(): Attrs =  # {{{1
 
 proc debg*(msg: string): void =  # {{{1
     discard
+
+
+proc tal_repeat_romans*(n: int): string =  # {{{1
+    let seqi = ["", "i", "ii", "iii", "iv",
+                    "v", "vi", "vii", "viii", "ix"]
+    let seqx = ["", "x", "xx", "xxx", "xl",
+                    "l", "lx", "lxx", "lxxx", "xc"]
+    let seqc = ["", "c", "cc", "ccc", "cd",
+                    "d", "dc", "dcc", "dccc", "cm"]
+    let seqm = ["", "m", "mm", "mmm", "",
+                "", "", "", "", ""]
+    proc conv(j: int, romans: array[10, string]): string =
+        var i = j mod 10
+        if i > 9: return ""
+        return romans[i]
+    var ret = conv(n, seqi)
+    ret = conv(n div 10, seqx) & ret
+    ret = conv(n div 100, seqc) & ret
+    ret = conv(n div 1000, seqm) & ret
+    return ret
+
+
+proc tal_repeat_letters*(n: int): string =  # {{{1
+    var (f, tmp) = (true, n)
+    var ret = ""
+    while tmp > 0 or f:
+        f = false
+        var i = tmp mod 25
+        tmp = tmp div 25
+        debg(fmt"letters: {n}->{i},{tmp}")
+        ret = ret & $chr(ord('a') + i)
+    return ret
+
+
+proc initRepeatVars*(n, max: int): RepeatVars =  # {{{1
+    var ret = RepeatVars(
+        n_index: n, n_number: n + 1, n_length: max,
+        f_even: (n mod 2) == 0, f_start: n == 0,
+        f_odd: (n mod 2) == 1, f_end: n == max - 1,
+        letter: tal_repeat_letters(n),
+        roman: tal_repeat_romans(n + 1),
+        )
+    ret.Letter = ret.letter.toUpper()
+    ret.Roman = ret.roman.toUpper()
+    return ret
 
 
 proc tales_bool_expr*(src: string): bool =  # {{{1

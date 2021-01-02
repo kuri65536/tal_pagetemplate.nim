@@ -30,42 +30,6 @@ proc initTagRepeat*(elem, path, name, expr: string, attrs: Attrs,  # {{{1
     return ret
 
 
-proc debg(msg: string): void =  # {{{1
-    discard
-
-
-proc tal_repeat_romans*(n: int): string =  # {{{1
-    let seqi = ["", "i", "ii", "iii", "iv",
-                    "v", "vi", "vii", "viii", "ix"]
-    let seqx = ["", "x", "xx", "xxx", "xl",
-                    "l", "lx", "lxx", "lxxx", "xc"]
-    let seqc = ["", "c", "cc", "ccc", "cd",
-                    "d", "dc", "dcc", "dccc", "cm"]
-    let seqm = ["", "m", "mm", "mmm", "",
-                "", "", "", "", ""]
-    proc conv(j: int, romans: array[10, string]): string =
-        var i = j mod 10
-        if i > 9: return ""
-        return romans[i]
-    var ret = conv(n, seqi)
-    ret = conv(n div 10, seqx) & ret
-    ret = conv(n div 100, seqc) & ret
-    ret = conv(n div 1000, seqm) & ret
-    return ret
-
-
-proc tal_repeat_letters*(n: int): string =  # {{{1
-    var (f, tmp) = (true, n)
-    var ret = ""
-    while tmp > 0 or f:
-        f = false
-        var i = tmp mod 25
-        tmp = tmp div 25
-        debg(fmt"letters: {n}->{i},{tmp}")
-        ret = ret & $chr(ord('a') + i)
-    return ret
-
-
 proc render_in_repeat_starttag(self: var TagRepeat,  # {{{1
                             name: string, attrs: var Attrs): string =
     if len(self.current.element_ignore) > 0:
