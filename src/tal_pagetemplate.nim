@@ -22,6 +22,7 @@ else:
     import tal_pagetemplate/tal_expr_json
 import tal_pagetemplate/tal_common
 import tal_pagetemplate/tal_repeat
+import tal_pagetemplate/tal_i18n
 
 
 type
@@ -100,6 +101,7 @@ proc end_tag(self: var LocalParser, name: string): string =  # {{{1
     var path = xml_path(self.stacks)  # remove local vars
     debg("leavevars: " & path)
     self.exprs.levvars(path)
+    leave_i18n_domain(self.exprs.stacks_i18n, path)
     return ret
 
 
@@ -238,7 +240,8 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
     vars_expr = TalExpr(expr: parser_json,
                         repeat: parser_json_repeat,
                         defvars: parser_json_defvars,
-                        levvars: parser_json_leavevars)
+                        levvars: parser_json_leavevars,
+                        stacks_i18n: @[])
     return parse_tree(src, filename, vars_expr)
 
 

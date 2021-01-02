@@ -38,9 +38,6 @@ type
     letter*, Letter*: string
     roman*, Roman*: string
 
-  VarInfo* = ref object of RootObj  # {{{1
-    hash: string
-
   TagRepeat0* = ref object of RootObj  # {{{1
     kind*: XmlEventKind
     data*: string
@@ -64,6 +61,8 @@ type
     repeat*: proc(path, name, expr: string): iterator(): RepeatVars
     defvars*: proc(expr, path: string): void
     levvars*: proc(path: string): void
+
+    stacks_i18n*: seq[tuple[path, domain: string]]
 
   TalVars* = ref object of RootObj  # {{{1
     when true:
@@ -154,6 +153,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     debg(fmt"start_tag: {attrs}")
     var ret = format.replace("$1>", elem)
     for k, v in attrs.pairs():
+        # TODO(shimoda): remove `continue` by removing items from `Attrs`.
         if k == "tal:define":
             continue
         if k == "tal:content":
@@ -183,6 +183,12 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
         var expr = attrs["tal:define"]
         attrs.del("tal:define")
         self.defvars(expr, path)  # TODO(shimoda): path in repeat
+
+    let attr = "i18n:domain"
+    if attrs.hasKey(attr):
+        var expr = attrs[attr]
+        attrs.del(attr)
+        enter_i18n_domain(self.stacks_i18n, path, expr)
 
     if attrs.hasKey("tal:replace"):
         var expr = attrs["tal:replace"]

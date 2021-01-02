@@ -15,6 +15,10 @@ msgstr ""
 "Preferred-Encodings: utf-8 latin1\n"
 "Domain: test\n"
 
-#. Default: records
+#. Default: 1
 msgid "1"
 msgstr "one"
+
+#. Default: 2
+msgid "2"
+msgstr "two"

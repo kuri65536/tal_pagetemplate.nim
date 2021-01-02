@@ -25,10 +25,10 @@ type
 
 
 proc parse_all(fp: Stream): string =  # {{{1
-    # var vars = Vars(repeat_src: @[1, 2, 3, 4, 5])
     var path = joinPath(parentDir(currentSourcePath), "catalog")
-    echo "open: " & path
+    setup_i18n("en", "utf-8", "another", path)
     setup_i18n("en", "utf-8", "test", path)
+
     var vars = newJObject()
     vars.add("repeat_src", % @[1, 2, 3, 4, 5])
     var fn = parse_template(fp, "", vars)
@@ -184,6 +184,13 @@ test "T2-7-1: can parse i18n:translate":  # {{{1
     var fp = newStringStream("<test i18n:translate=\"1\">uno</test>")
     check parse_all(fp) == "<test>one</test>"
 
+
+test "T2-8-1: can parse i18n:domain":  # {{{1
+    var fp = newStringStream("<test i18n:translate=\"2\">bel</test>" &
+                             "<anot i18n:domain=\"another\"" &
+                             " i18n:translate=\"2\">bel</anot>" &
+                             "<test2 i18n:translate=\"1\">uno</test2>")
+    check parse_all(fp) == "<test>two</test><anot>ni</anot><test2>one</test2>"
 
 
 # end of file {{{1
