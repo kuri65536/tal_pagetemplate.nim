@@ -21,10 +21,8 @@ import tal_pagetemplate/tal_expr
 import tal_pagetemplate/tal_repeat
 import tal_pagetemplate/tal_i18n
 
-when defined(use_runtime):
-    import tal_pagetemplate/tal_expr_runtime
-else:
-    import tal_pagetemplate/tal_expr_json
+import tal_pagetemplate/tal_expr_runtime
+import tal_pagetemplate/tal_expr_json
 
 
 type
@@ -215,7 +213,7 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
 proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
                      ): iterator(): string =
     var vars_expr: TalExpr
-    var vars_tal = TalVars(
+    var vars_tal = TalVars(f_json: true,
             root: initTable[string, tuple[path: string, obj: JsonNode]]())
     for name, fld in vars.getFields():
         vars_tal.root[name] = ("", fld)
@@ -243,12 +241,34 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
     return parse_tree(src, filename, vars_expr)
 
 
-proc parse_template*(src: Stream, filename: string, vars: any  # {{{1
-                     ): iterator(): string =  # {{{1
-    proc parser_typeinfo(expr: string, vars: TalVars): string =
-        return expr
+proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
+                     ): iterator(): string =
+    var vars_expr: TalExpr
+    var vars_tal = TalVars(f_json: false,
+            root_runtime: initTable[string, tuple[path: string, obj: Any]]())
+    vars_tal.root_runtime.copy_from(vars)
 
-    return parse_tree(src, filename, parser_typeinfo)
+    proc parser_rtti(expr: string): string =
+        return vars_tal.parse_expr(expr)
+
+    proc parser_rtti_repeat(path, name, expr: string): iterator(): RepeatVars =
+        iterator ret(): RepeatVars =
+            for i in vars_tal.parse_repeat_seq(name, path, expr):
+                yield i
+        return ret
+
+    proc parser_rtti_defvars(expr, path: string): void =
+        vars_expr.parse_define(vars_tal, expr, path)
+
+    proc parser_rtti_leavevars(path: string): void =
+        vars_tal.leave_define(path)
+
+    vars_expr = TalExpr(expr: parser_rtti,
+                        repeat: parser_rtti_repeat,
+                        defvars: parser_rtti_defvars,
+                        levvars: parser_rtti_leavevars,
+                        stacks_i18n: @[])
+    return parse_tree(src, filename, vars_expr)
 
 
 # end of file {{{1

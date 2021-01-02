@@ -13,6 +13,7 @@ import parsexml
 import strformat
 import strutils
 import tables
+import typeinfo
 import xmltree
 
 import tal_i18n
@@ -67,10 +68,9 @@ type
     stacks_i18n*: seq[tuple[path, domain: string]]
 
   TalVars* = ref object of RootObj  # {{{1
-    when defined(use_runtime):
-        root*: Table[string, tuple[path: string, obj: any]]
-    else:
-        root*: Table[string, tuple[path: string, obj: JsonNode]]
+    root_runtime*: Table[string, tuple[path: string, obj: Any]]
+    root*: Table[string, tuple[path: string, obj: JsonNode]]
+    f_json*: bool
 
 
 proc newAttrs*(): Attrs =  # {{{1

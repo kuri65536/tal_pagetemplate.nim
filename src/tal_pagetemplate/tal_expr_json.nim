@@ -23,10 +23,6 @@ proc json_to_string*(self: JsonNode): string =  # {{{1
         return $self
 
 
-proc make_null(): string =  # {{{1
-    return $newJNull()
-
-
 proc make_bool*(src: bool): string =  # {{{1
     return $newJBool(src)
 
@@ -109,8 +105,8 @@ proc pop_repeat_var*(self: var TalVars, name: string): void =  # {{{1
         self.root.del("reeat")
 
 
-iterator parse_repeat_seq_local*(self: var TalVars, name, path, src: string  # {{{1
-                                 ): RepeatVars =
+iterator parse_repeat_seq_json*(self: var TalVars, name, path, src: string  # {{{1
+                                ): RepeatVars =
     var expr = json.parseJson(src)
     case expr.kind:
     of JNull, JInt, JFloat, JBool, JObject:

@@ -15,10 +15,8 @@ import tables
 import ./tal_common
 import ./tal_repeat
 
-when defined(use_runtime):
-    import ./tal_expr_runtime
-else:
-    import ./tal_expr_json
+import ./tal_expr_json
+import ./tal_expr_runtime
 
 
 proc parse_expr_path*(self: TalVars, src: string): string =  # {{{1
@@ -35,10 +33,10 @@ proc parse_expr_path*(self: TalVars, src: string): string =  # {{{1
         discard
 
     var parts = src.split("/")
-    when defined(use_runtime):
-        return self.root.parse_expr_runtime(parts)
-    else:
+    if self.f_json:
         return json_to_string(self.parse_expr_json(parts))
+    else:
+        return any_serialize(self.parse_expr_runtime(parts))
 
 
 proc parse_expr_exists(self: TalVars, src: string, f_not: bool  # {{{1
@@ -140,8 +138,12 @@ proc parse_expr*(self: TalVars, src: string): string =  # {{{1
 iterator parse_repeat_seq*(self: var TalVars, name, path, src: string  # {{{1
                            ): RepeatVars =
     var src = self.parse_expr(src)
-    for i in self.parse_repeat_seq_local(name, path, src):
-        yield i
+    if self.f_json:
+        for i in self.parse_repeat_seq_json(name, path, src):
+            yield i
+    else:
+        for i in self.parse_repeat_seq_runtime(name, path, src):
+            yield i
     self.pop_var("repeat")
     self.pop_var(name)
 
