@@ -45,10 +45,11 @@ TODO
 - enable the varibles from nim runtime informations, instead of JSON.
 - enable JSON string/ fields.
 - `tal:omit-tag` wrong implementation now.
-- tal expressions: string
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
 - metal features (low priority, it is too complex for me.)
+- tal expressions: `exists`
+- tal expressions: `nocall`
 - tal expressions: `default`
 - tal expressions: `attrs`
 - tal expressions: `CONTEXTS`

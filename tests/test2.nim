@@ -33,9 +33,10 @@ proc parse_all(fp: Stream): string =  # {{{1
     vars.add("this", %"Becon")
     vars.add("that", %"Sesami")
 
-    # for test: 3-1-2
+    # for test: 3-1-2, 3-2-1
     var (tmp1, tmp2) = (newJObject(), newJObject())
     tmp2.add("total", %5)
+    tmp2.add("number", %1)
     tmp1.add("form", tmp2)
     vars.add("request", tmp1)
 
@@ -65,6 +66,18 @@ test "T3-1-3: can parse string - from reference 3 - including dollar":  # {{{1
     var fp = newStringStream("<p tal:content=\"string:cost: $$$cost\">" &
                              "  cost: $42.00</p>")
     check parse_all(fp) == "<p>cost: $42.0</p>"
+
+
+test "T3-2-1: can parse exists - from reference":  # {{{1
+    var fp = newStringStream("<p tal:condition=\"" &
+                             "not:exists:request/form/number\">" &
+                             "  Please enter a number between 0 and 5</p>")
+    check parse_all(fp) == ""
+
+    fp = newStringStream("<p tal:condition=\"" &
+                         "exists:request/form/number\">" &
+                         "  Please enter a number between 0 and 5</p>")
+    check parse_all(fp) == "<p>  Please enter a number between 0 and 5</p>"
 
 
 # end of file {{{1

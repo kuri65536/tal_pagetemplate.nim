@@ -95,8 +95,21 @@ proc parse_expr_path(self: TalVars, src: string): JsonNode =  # {{{1
     return parse_expr_hier(ret, parts[1 ..^ 1])
 
 
-proc parse_expr_exists(self: TalVars, src: string): JsonNode =  # {{{1
-    return newJBool(false)
+proc parse_expr_exists(self: TalVars, src: string, f_not: bool  # {{{1
+                       ): JsonNode =
+    proc make_ret(src: bool): JsonNode =
+        var src = src
+        if f_not:
+            src = not src
+        return newJBool(src)
+
+    if src.strip() == "null":  # passing the null instance -> true.
+        return make_ret(true)
+    var tmp = self.parse_expr_path(src)
+    echo(fmt"expr-exists: {$tmp}-{f_not}")
+    if $tmp != "null":
+        return make_ret(true)
+    return make_ret(false)
 
 
 proc parse_expr_nocall(self: TalVars, src: string): JsonNode =  # {{{1
@@ -147,24 +160,31 @@ proc parse_expr_python(self: TalVars, src: string): JsonNode =  # {{{1
         return newJFloat(parseFloat(tmp))
     except ValueError:
         discard
-    # TODO(shimoda): implement.
-    return newJString("")
+
+    # FIXME(shimoda): implement.
+    when defined(supress_python_expressions):
+        return newJString(src)
+    else:
+        return newJString(src & "(python not supported)")
 
 
 proc parse_expr_local(self: TalVars, src: string): JsonNode =  # {{{1
+    var (f_not, src) = (false, src.strip(leading=true, trailing=false))
+    while src.startsWith("not:"):
+        src = src[4 ..^ 1].strip(leading=true, trailing=false)
+        f_not = not f_not
+
     if src.startsWith("python:"):
         return self.parse_expr_python(src[7 ..^ 1])
     if src.startsWith("string:"):
         return self.parse_expr_string(src[7 ..^ 1])
     if src.startsWith("exists:"):
-        return self.parse_expr_exists(src[7 ..^ 1])
+        return self.parse_expr_exists(src[7 ..^ 1], f_not)
     if src.startsWith("nocall:"):
         return self.parse_expr_nocall(src[7 ..^ 1])
 
     var src0 = src
-    if src.startsWith("not:"):
-        src0 = src[4 ..^ 1]
-    elif src.startsWith("path:"):
+    if src.startsWith("path:"):
         src0 = src[5 ..^ 1]
     return self.parse_expr_path(src0)
 

@@ -82,6 +82,11 @@ proc debg*(msg: string): void =  # {{{1
 
 proc tales_bool_expr*(src: string): bool =  # {{{1
     let src = src.strip()
+    if src == "true":
+        return true
+    if src == "false":
+        return false
+
     try:
         var n = parseInt(src)
         if n != 0:
@@ -104,6 +109,7 @@ proc tales_bool_expr*(src: string): bool =  # {{{1
         return false      # met 6: implementation-dependent
     # ??? met 5: etc
 
+    echo(fmt"tal-bool: {src}")
     if len(src) < 1:
         return false      # met 3-1: an empty string
     let seq = src.replace(" ", "")
