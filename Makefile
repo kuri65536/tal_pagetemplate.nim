@@ -16,7 +16,8 @@ tests/catalog/en/LC_MESSAGES/another.mo: tests/catalog/another.po
 
 demo: nimptal
 	./$< || echo
-	./$< -a tests/test.json tests/test.xml
+	./$< -a tests/test.json -i en,UTF-8,test,$(PWD)/tests/catalog \
+	    tests/test.xml
 
 nimptal: tests/cmdline.nim $(src)
 	nim c -o=$@ $<

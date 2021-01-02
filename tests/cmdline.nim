@@ -20,7 +20,8 @@ import ../src/tal_pagetemplate/tal_i18n
 
 
 proc help_text(): void =
-    echo("nimptal [-a vars.json] [-i locale,encoding,domain,path] [xml]")
+    echo("nimptal [-a vars.json] [-i locale,encoding,domain,path]")
+    echo("                       [-i locale,encoding,domain,path] ... [xml]")
     quit(1)
 
 
@@ -28,8 +29,6 @@ var (f_next_is_vars, fname_vars) = (false, "")
 var f_next_is_i18n = false
 var fname_xml = ""
 
-setup_i18n("en", "latin1", "default",
-           joinPath(parentDir(currentSourcePath), "tests/catalog"))
 for i in countup(1, paramCount()):
     var arg = paramStr(i).string
     if @["-h", "--help"].contains(arg):
@@ -41,9 +40,11 @@ for i in countup(1, paramCount()):
     if f_next_is_i18n:
         var seq = arg.split(",")
         if len(seq) == 4:
+            echo("registerd i18n:domaon-", seq[2], " in:", seq[3])
             setup_i18n(seq[0], seq[1], seq[2], seq[3])
         else:
             help_text()
+        f_next_is_i18n = false
         continue
     if @["-a", "--var"].contains(arg):
         f_next_is_vars = true
