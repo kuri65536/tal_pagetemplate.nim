@@ -119,7 +119,7 @@ proc tales_path_runtime*(self: TalVars, parts: seq[string]): Any =  # {{{1
     if not self.root_runtime.hasKey(name):
         return make_null()
     var ret = self.root_runtime[name].obj
-    echo(fmt"rtti-expr: {name}-{ret.kind}")
+    debg(fmt"rtti-expr: {name}-{ret.kind}")
     return parse_expr_hier(ret, parts[1 ..^ 1])
 
 
@@ -202,7 +202,7 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             n += 1
     of akArray, akSequence:
         var (n, max) = (0, len(expr))
-        for i in 0 .. max:
+        for i in 0 .. max - 1:
             self.pop_repeat_var_runtime(name)
             self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)
@@ -216,7 +216,6 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
         for i in expr.elements():
             max += 1
         for i in expr.elements():
-            echo(i)
             self.pop_repeat_var_runtime(name)
             self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)

@@ -171,7 +171,7 @@ test "T4-1-4: use nim rtti - ch, string, bool":  # {{{1
     var fp = newStringStream("<p tal:replace=\"ch\"> </p>," &
                              "<p tal:replace=\"str\"> </p>," &
                              "<p tal:replace=\"b\"> </p>,")
-    check parse_all2(fp, v) == "'E',\"test4-1-4\",true,"
+    check parse_all2(fp, v) == "E,test4-1-4,true,"
 
 
 type
@@ -194,12 +194,38 @@ test "T4-1-5: use nim rtti - set, seq, array":  # {{{1
     # check parse_all2(fp, v) == "{'F', 'G', 'H'}-[1.0, 2.0]-(\"a\", \"b\")-"
 
 
-test "T4-2-1: use nim rtti - ":  # {{{1
+test "T4-2-1: use nim rtti - w/repeat, set":  # {{{1
     var tmp = TestObj3(ns: {'F'..'H'},
                        fs: @[], ss: ["a", "b"])
     var v = toAny(tmp)
     var fp = newStringStream("<p tal:repeat=\"i ns\" tal:content=\"i\"></p>")
     check parse_all2(fp, v) == "<p>70</p><p>71</p><p>72</p>"
+
+
+test "T4-2-2: use nim rtti - w/repeat, seq":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[0.1, 0.2, 0.3], ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:repeat=\"i fs\" tal:content=\"i\"></p>")
+    check parse_all2(fp, v) == "<p>0.1</p><p>0.2</p><p>0.3</p>"
+
+
+test "T4-2-3: use nim rtti - w/repeat, array":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[0.1, 0.2, 0.3], ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:repeat=\"i ss\" tal:content=\"i\"></p>")
+    check parse_all2(fp, v) == "<p>a</p><p>b</p>"
+
+
+test "T4-3-1: use nim rtti - w/string expressions":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[0.9, 1.0, 1.1], ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "set:${ns}, list:${fs}, array:${ss}\"></p>")
+    check parse_all2(fp, v) == "set:{70, 71, 72}, list:[0.9, 1.0, 1.1], " &
+                               "array:(\"a\", \"b\")"
 
 
 # end of file {{{1
