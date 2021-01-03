@@ -8,6 +8,7 @@ v.2.0. If a copy of the MPL was not distributed with this file,
 You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#  # import {{{1
+import json
 import sequtils
 import strformat
 import strutils
@@ -21,20 +22,23 @@ type
   runtime_null = object
     n: int
 
+  runtime_buffer = object
+    n: BiggestInt
+    f: float
+    s: string
+
   runtime_repeat = object
     names: seq[string]
     vars: seq[RepeatVars]
 
 
 var null_object = runtime_null()
+var rt_repeat = runtime_repeat(names: @[], vars: @[])
+var rt_buffer = runtime_buffer()
 
 
 proc make_null(): Any =  # {{{1
     return toAny(null_object)
-
-
-proc any_deserialize(self: string): Any =  # {{{1
-    discard
 
 
 proc any_serialize*(self: Any): string =  # {{{1
@@ -110,13 +114,41 @@ proc parse_expr_hier(self: Any, parts: seq[string]): Any =  # {{{1
     return make_null()
 
 
-proc parse_expr_runtime*(self: TalVars, parts: seq[string]): Any =  # {{{1
+proc tales_path_runtime*(self: TalVars, parts: seq[string]): Any =  # {{{1
     var name = parts[0]
     if not self.root_runtime.hasKey(name):
         return make_null()
     var ret = self.root_runtime[name].obj
     echo(fmt"rtti-expr: {name}-{ret.kind}")
     return parse_expr_hier(ret, parts[1 ..^ 1])
+
+
+proc tales_expr_runtime*(self: TalVars, expr: string): Any =  # {{{1
+    var (ans, parts) = tales_split_path(expr)
+    if len(parts) < 1:
+        case ans.kind:
+        of JInt:   rt_buffer.n = ans.num;  return toAny(rt_buffer.n)
+        of JFloat: rt_buffer.f = ans.fnum; return toAny(rt_buffer.f)
+        of JNull:  return make_null()
+        else:      assert false
+    return self.tales_path_runtime(parts)
+
+
+proc tales_meta_runtime*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
+                         ): Any =
+    if meta == "" and len(exprs) == 1:
+        return self.tales_expr_runtime(exprs[0])
+
+    var (ret, n) = ("", 0)
+    for ch in meta:
+        if ch == '\t':
+            var tmp = self.tales_expr_runtime(exprs[n])
+            ret &= any_serialize(tmp)
+            n += 1
+        else:
+            ret &= $ch
+    rt_buffer.s = ret
+    return toAny(rt_buffer.s)
 
 
 proc push_var(self: var TalVars, name, path: string, vobj: Any): void =  # {{{1
@@ -126,46 +158,42 @@ proc push_var(self: var TalVars, name, path: string, vobj: Any): void =  # {{{1
 
 proc push_repeat_var(self: var TalVars,   # {{{1
                      name: string, repeat_var: RepeatVars): void =
-    var robj: runtime_repeat
     if self.root_runtime.hasKey("repeat"):
-        var tmp = self.root_runtime["repeat"].obj
-        robj = cast[runtime_repeat](tmp)
+        discard
     else:
-        robj = runtime_repeat(vars: @[])
-        var tmp = toAny(robj)
+        var tmp = toAny(rt_repeat)
         self.root_runtime.add("repeat", ("", tmp))
-    robj.names.add(name)
-    robj.vars.add(repeat_var)
+        rt_repeat.names = @[]
+        rt_repeat.vars = @[]
+    rt_repeat.names.add(name)
+    rt_repeat.vars.add(repeat_var)
 
 
-proc pop_var(self: var TalVars, name: string): void =  # {{{1
+proc pop_var_runtime*(self: var TalVars, name: string): void =  # {{{1
     if not self.root_runtime.hasKey(name):
         return
     self.root_runtime.del(name)
 
 
-proc pop_repeat_var(self: var TalVars, name: string): void =  # {{{1
+proc pop_repeat_var_runtime*(self: var TalVars, name: string): void =  # {{{1
     if not self.root_runtime.hasKey("repeat"):
         return
-    var tmp = self.root_runtime["repeat"].obj
-    var robj = cast[runtime_repeat](tmp)
-    var n = robj.names.find(name)
+    var n = rt_repeat.names.find(name)
     if n < 0:
         return
-    robj.names.del(n)
-    robj.vars.del(n)
+    rt_repeat.names.del(n)
+    rt_repeat.vars.del(n)
 
 
-iterator parse_repeat_seq_runtime*(self: var TalVars, name, path, src: string  # {{{1
-                                   ): RepeatVars =
-    var expr = any_deserialize(src)
+iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
+                                   name, path: string, expr: Any): RepeatVars =
     case expr.kind:
     of akString:
         var tmp = $expr
         var (n, max) = (0, len(tmp))
         for i in tmp:
-            self.pop_repeat_var(name)
-            self.pop_var(name)
+            self.pop_repeat_var_runtime(name)
+            self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)
             var tmp = i
             self.push_var(name, path, toAny(tmp))
@@ -175,11 +203,25 @@ iterator parse_repeat_seq_runtime*(self: var TalVars, name, path, src: string  #
     of akArray, akSequence:
         var (n, max) = (0, len(expr))
         for i in 0 .. max:
-            self.pop_repeat_var(name)
-            self.pop_var(name)
+            self.pop_repeat_var_runtime(name)
+            self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)
             var tmp = expr[i]
             self.push_var(name, path, tmp)
+            self.push_repeat_var(name, j)
+            yield j
+            n += 1
+    of akSet:
+        var (n, max) = (0, 0)
+        for i in expr.elements():
+            max += 1
+        for i in expr.elements():
+            echo(i)
+            self.pop_repeat_var_runtime(name)
+            self.pop_var_runtime(name)
+            var j = initRepeatVars(n, max)
+            rt_buffer.n = i
+            self.push_var(name, path, toAny(rt_buffer.n))
             self.push_repeat_var(name, j)
             yield j
             n += 1

@@ -219,7 +219,7 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
         vars_tal.root[name] = ("", fld)
 
     proc parser_json(expr: string): string =
-        return vars_tal.parse_expr(expr)
+        return vars_tal.tales_parse(expr)
 
     proc parser_json_repeat(path, name, expr: string): iterator(): RepeatVars =
         iterator ret(): RepeatVars =
@@ -249,7 +249,7 @@ proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
     vars_tal.root_runtime.copy_from(vars)
 
     proc parser_rtti(expr: string): string =
-        return vars_tal.parse_expr(expr)
+        return vars_tal.tales_parse(expr)
 
     proc parser_rtti_repeat(path, name, expr: string): iterator(): RepeatVars =
         iterator ret(): RepeatVars =

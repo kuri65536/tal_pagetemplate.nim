@@ -19,24 +19,7 @@ import ./tal_expr_json
 import ./tal_expr_runtime
 
 
-proc parse_expr_path*(self: TalVars, src: string): string =  # {{{1
-    if len(src) < 1:
-        return ""
-    var tmp = src.strip()
-    try:
-        return $parseInt(tmp)
-    except ValueError:
-        discard
-    try:
-        return $parseFloat(tmp)
-    except ValueError:
-        discard
-
-    var parts = src.split("/")
-    if self.f_json:
-        return json_to_string(self.parse_expr_json(parts))
-    else:
-        return any_serialize(self.parse_expr_runtime(parts))
+proc tales_parse*(self: TalVars, src: string): string
 
 
 proc parse_expr_exists(self: TalVars, src: string, f_not: bool  # {{{1
@@ -49,7 +32,7 @@ proc parse_expr_exists(self: TalVars, src: string, f_not: bool  # {{{1
 
     if src.strip() == "null":  # passing the null instance -> true.
         return make_ret(true)
-    var tmp = self.parse_expr_path(src)
+    var tmp = self.tales_parse(src)
     debg(fmt"expr-exists: {$tmp}-{f_not}")
     if $tmp != "null":
         return make_ret(true)
@@ -69,14 +52,14 @@ proc parse_expr_string(self: TalVars, src: string): string =  # {{{1
                 if len(expr) < 1:
                     (start, expr, ret) = ("", "", ret & $ch)
                 else:
-                    var tmp = self.parse_expr_path(expr)
+                    var tmp = self.tales_parse(expr)
                     (start, expr, ret) = ("", "", ret & tmp & $ch)
             elif len(expr) < 1 and ch == '{':
                 start = "${"
             else:
                 expr &= $ch
         elif len(start) > 0 and ch == '}':  # ${
-            var tmp = self.parse_expr_path(expr)
+            var tmp = self.tales_parse(expr)
             (start, expr, ret) = ("", "", ret & tmp)
         elif len(start) > 0:                # ${
             expr &= $ch
@@ -85,7 +68,7 @@ proc parse_expr_string(self: TalVars, src: string): string =  # {{{1
         else:
             ret &= $ch
     if len(expr) > 0:  # met eol in expression
-        ret &= self.parse_expr_path(expr)
+        ret &= self.tales_parse(expr)
     debg(fmt"expr-string: {ret}")
     return ret
 
@@ -108,7 +91,8 @@ proc parse_expr_python(self: TalVars, src: string): string =  # {{{1
         return src & "(python not supported)"
 
 
-proc parse_expr*(self: TalVars, src: string): string =  # {{{1
+proc tales_parse_meta*(self: TalVars, src: string  # {{{1
+                       ): tuple[meta: string, expr: seq[string]] =
     var (n_not, src) = (0, src.strip(leading=true, trailing=false))
     while src.startsWith("not:"):
         src = src[4 ..^ 1].strip(leading=true, trailing=false)
@@ -116,36 +100,55 @@ proc parse_expr*(self: TalVars, src: string): string =  # {{{1
     var f_not = (n_not mod 2) == 1
 
     if src.startsWith("python:"):
-        return self.parse_expr_python(src[7 ..^ 1])
+        return (self.parse_expr_python(src[7 ..^ 1]), @[])
     if src.startsWith("string:"):
-        return self.parse_expr_string(src[7 ..^ 1])
+        return (self.parse_expr_string(src[7 ..^ 1]), @[])
     if src.startsWith("exists:"):
-        return self.parse_expr_exists(src[7 ..^ 1], f_not)
+        return (self.parse_expr_exists(src[7 ..^ 1], f_not), @[])
     if src.startsWith("nocall:"):
-        return self.parse_expr_nocall(src[7 ..^ 1])
+        return (self.parse_expr_nocall(src[7 ..^ 1]), @[])
 
     var src0 = src
     if src.startsWith("path:"):
         src0 = src[5 ..^ 1]
-    var ret = self.parse_expr_path(src0)
     if n_not > 0:
+        var ret = self.tales_parse(src0)
+        echo(fmt"tales_parse: {src0}->{ret}")
         var ret_bool = tales_bool_expr($ret)
         if f_not: ret_bool = not ret_bool
-        return make_bool(ret_bool)
-    return ret
+        return (make_bool(ret_bool), @[])
+    return ("", @[src0])
+
+
+proc tales_parse*(self: TalVars, src: string): string =  # {{{1
+    var (meta, exprs) = self.tales_parse_meta(src)
+    if self.f_json:
+        var tmp = self.tales_meta_json(meta, exprs)
+        echo(fmt"tales_expr-json: {json_to_string(tmp)}")
+        return json_to_string(tmp)
+    else:
+        var tmp = self.tales_meta_runtime(meta, exprs)
+        return any_serialize(tmp)
 
 
 iterator parse_repeat_seq*(self: var TalVars, name, path, src: string  # {{{1
                            ): RepeatVars =
-    var src = self.parse_expr(src)
+    var (meta, exprs) = self.tales_parse_meta(src)
     if self.f_json:
-        for i in self.parse_repeat_seq_json(name, path, src):
+        echo(fmt"rep-json: {meta}->{exprs}")
+        var expr = self.tales_meta_json(meta, exprs)
+        echo(fmt"rep-json: {src}->" & json_to_string(expr))
+        for i in self.parse_repeat_seq_json(name, path, expr):
             yield i
+        self.pop_var("repeat")
+        self.pop_var(name)
     else:
-        for i in self.parse_repeat_seq_runtime(name, path, src):
+        var expr = self.tales_meta_runtime(meta, exprs)
+        echo(fmt"rep-rtti: {any_serialize(expr)}")
+        for i in self.parse_repeat_seq_runtime(name, path, expr):
             yield i
-    self.pop_var("repeat")
-    self.pop_var(name)
+        self.pop_var_runtime("repeat")
+        self.pop_var_runtime(name)
 
 
 proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1

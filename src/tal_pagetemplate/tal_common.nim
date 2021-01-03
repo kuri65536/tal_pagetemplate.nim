@@ -167,6 +167,27 @@ proc tales_bool_expr*(src: string): bool =  # {{{1
     return true
 
 
+proc tales_split_path*(src: string  # {{{1
+                       ): tuple[ans: JsonNode, parts: seq[string]] =
+    var tmp = ""
+    if len(src) < 1:
+        return (newJNull(), @[])
+    tmp = src.strip()
+    try:
+        var n = newJInt(parseInt(tmp))
+        return (n, @[])
+    except ValueError:
+        discard
+    try:
+        var n = newJFloat(parseFloat(tmp))
+        return (n, @[])
+    except ValueError:
+        discard
+
+    var parts = src.split("/")
+    return (newJNull(), parts)
+
+
 proc tal_parse_content(self: TalExpr, src: string): string =  # {{{1
     var src = src.strip()
     var f_escape = true

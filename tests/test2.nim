@@ -194,5 +194,13 @@ test "T4-1-5: use nim rtti - set, seq, array":  # {{{1
     # check parse_all2(fp, v) == "{'F', 'G', 'H'}-[1.0, 2.0]-(\"a\", \"b\")-"
 
 
+test "T4-2-1: use nim rtti - ":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[], ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:repeat=\"i ns\" tal:content=\"i\"></p>")
+    check parse_all2(fp, v) == "<p>70</p><p>71</p><p>72</p>"
+
+
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

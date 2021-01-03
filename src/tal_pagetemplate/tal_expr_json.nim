@@ -11,6 +11,7 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 import json
 import strutils
 import tables
+import typeinfo
 
 import ./tal_common
 
@@ -63,12 +64,35 @@ proc parse_expr_hier(self: JsonNode, parts: seq[string]): JsonNode =  # {{{1
     return newJNull()
 
 
-proc parse_expr_json*(self: TalVars, parts: seq[string]): JsonNode =  # {{{1
+proc tales_path_json(self: TalVars, parts: seq[string]): JsonNode =  # {{{1
     var name = parts[0]
     if not self.root.hasKey(name):
         return newJNull()
     var ret = self.root[name].obj
     return parse_expr_hier(ret, parts[1 ..^ 1])
+
+
+proc tales_expr_json(self: TalVars, expr: string): JsonNode =  # {{{1
+    var (ans, parts) = tales_split_path(expr)
+    if len(parts) < 1:
+        return ans
+    return self.tales_path_json(parts)
+
+
+proc tales_meta_json*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
+                      ): JsonNode =
+    if meta == "" and len(exprs) == 1:
+        return self.tales_expr_json(exprs[0])
+
+    var (ret, n) = ("", 0)
+    for ch in meta:
+        if ch == '\t':
+            var tmp = self.tales_expr_json(exprs[n])
+            ret &= json_to_string(tmp)
+            n += 1
+        else:
+            ret &= $ch
+    return newJString(ret)
 
 
 proc push_var*(self: var TalVars, name, path, vobj: string): void =  # {{{1
@@ -105,9 +129,8 @@ proc pop_repeat_var*(self: var TalVars, name: string): void =  # {{{1
         self.root.del("reeat")
 
 
-iterator parse_repeat_seq_json*(self: var TalVars, name, path, src: string  # {{{1
-                                ): RepeatVars =
-    var expr = json.parseJson(src)
+iterator parse_repeat_seq_json*(self: var TalVars, name, path: string,  # {{{1
+                                expr: JsonNode): RepeatVars =
     case expr.kind:
     of JNull, JInt, JFloat, JBool, JObject:
         var j = initRepeatVars(0, 1)
