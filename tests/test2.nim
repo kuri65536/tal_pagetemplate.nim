@@ -171,7 +171,27 @@ test "T4-1-4: use nim rtti - ch, string, bool":  # {{{1
     var fp = newStringStream("<p tal:replace=\"ch\"> </p>," &
                              "<p tal:replace=\"str\"> </p>," &
                              "<p tal:replace=\"b\"> </p>,")
-    check parse_all2(fp, v) == "E,test4-1-4,true,"
+    check parse_all2(fp, v) == "'E',\"test4-1-4\",true,"
+
+
+type
+  TestObj3 = object
+    ns: set[char]
+    fs: seq[float]
+    ss: array[2, string]
+
+
+test "T4-1-5: use nim rtti - set, seq, array":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[1.0, 2.0],
+                       ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"ns\"> </p>-" &
+                             "<p tal:replace=\"fs\"> </p>-" &
+                             "<p tal:replace=\"ss\"> </p>-")
+    check parse_all2(fp, v) == "{70, 71, 72}-[1.0, 2.0]-(\"a\", \"b\")-"
+    # can't serialize set[any] from integer
+    # check parse_all2(fp, v) == "{'F', 'G', 'H'}-[1.0, 2.0]-(\"a\", \"b\")-"
 
 
 # end of file {{{1

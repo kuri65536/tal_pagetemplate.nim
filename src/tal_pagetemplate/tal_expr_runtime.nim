@@ -43,7 +43,7 @@ proc any_serialize*(self: Any): string =  # {{{1
         var ret = ""
         var (h, t) = if self.kind == akArray: ("(", ")")
                      else:                    ("[", "]")
-        for i in 0 .. len(self):
+        for i in 0 .. len(self) - 1:
             ret &= ", " & any_serialize(self[i])
         if len(ret) < 1:
             return h & t
@@ -61,7 +61,8 @@ proc any_serialize*(self: Any): string =  # {{{1
     of akSet:
         var ret = ""
         for i in self.elements():
-            ret &= fmt", {i}"
+            var tmp = $i  # FIXME(shimoda): any_serialize(self[i])
+            ret &= fmt", {tmp}"
         if len(ret) < 1:
             return "{0}"
         return "{" & ret[2 ..^ 1] & "}"
@@ -78,8 +79,8 @@ proc any_serialize*(self: Any): string =  # {{{1
     of akFloat:   return $(self.getFloat())
     of akFloat32: return $(self.getFloat32())
     of akFloat64: return $(self.getFloat64())
-    of akChar:    return $(self.getChar())
-    of akString:  return self.getString()
+    of akChar:    return "'" & $self.getChar() & "'"
+    of akString:  return "\"" & self.getString() & "\""
     of akBool:    return $(self.getBool())
     else:
         # akBool, akEnum:
@@ -194,13 +195,13 @@ proc copy_from*(self: var Table[string, tuple[path: string, obj: Any]],  # {{{1
     case vars.kind:
     of akTuple, akObject:
         for name, fld in vars.fields():
-            echo(fmt"copy_rtti: {name}-{fld.kind}")
+            debg(fmt"copy_rtti: {name}-{fld.kind}")
             self.add(name, ("", fld))
     of akArray, akSequence:
         var max = len(vars)
         for i in 0 .. max:
             var fld = vars[i]
-            echo(fmt"rtti-copy: {i}-{fld.kind}")
+            debg(fmt"rtti-copy: {i}-{fld.kind}")
             self.add($i, ("", fld))
     else:
         discard
