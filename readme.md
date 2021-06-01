@@ -51,8 +51,6 @@ $ ./nimptal test.xml
 
 TODO
 -----------------------------------------
-- enable the varibles from nim runtime informations, instead of JSON.
-- enable JSON string/ fields.
 - parse single close tags: `<br />`
 - re-write tal:repeat and its nesting.
 - metal features (low priority, it is too complex for me.)
