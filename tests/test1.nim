@@ -241,5 +241,14 @@ test "T2-9-1: can parse tal:condition":  # {{{1
     check parse_all(fp) == "<div>1</div>"
 
 
+test "T2-10-1: can parse i18n:attributes":  # {{{1
+    var fp = newStringStream("<test i18n:translate=\"2\">bel</test>" &
+                             "<anot i18n:domain=\"another\"" &
+                             " i18n:attributes=\"attr 2\">bel</anot>" &
+                             "<test2 i18n:attributes=\"a 1;b 2\">uno</test2>")
+    check parse_all(fp) == "<test>two</test><anot attr=\"ni\">bel</anot>" &
+                           "<test2 a=\"one\" b=\"two\">uno</test2>"
+
+
 # end of file {{{1
 # vi: ft=nim:et:ts=4:fdm=marker:nowrap

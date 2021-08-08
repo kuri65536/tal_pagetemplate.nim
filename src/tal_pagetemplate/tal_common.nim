@@ -23,9 +23,11 @@ type
   Attrs* = OrderedTable[string, string]  # {{{1
 
   TagProcess* {.size: sizeof(cint).}= enum  # {{{1
+    tag_in_attributes = "tal:attributes"
     tag_in_replace   # replace whole tag with content or expr.
     tag_in_content   # replace content with expr
     tag_in_i18n = "i18n:translate"
+    tag_in_i18n_attrs = "i18n:attributes"
     tag_in_repeat    # repeat elements by args.
     tag_in_omit_tag  # tal:omit-tag
     tag_in_notals    # otherwise
@@ -261,11 +263,9 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
         return format.replace("$1", elem) & sfx
     var replaces = newAttrs()
     var attrs = attrs
-    if true:
-      var attr = "tal:attributes"
-      if attrs.hasKey(attr):
-        var expr = attrs[attr]
-        attrs.del(attr)
+
+    proc render(attr, expr: string, replaces: var Attrs,
+                cb: proc(src: string): string) =
         debg(fmt"tal:attributes -> {expr}")
         for src in tal_parse_multi_statements(expr):
             debg(fmt"tal:attributes -> {src}")
@@ -278,8 +278,25 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
             var expression = join(seq[1 ..^ 1], " ")
             expression = expression.strip()
             expression = self.expr(expression)
+            expression = cb(expression)
             replaces.add(name, expression)
         debg(fmt"tal:attributes -> replaces: {replaces}")
+
+    if true:
+      let attr = $tag_in_attributes
+      if attrs.hasKey(attr):
+        var expr = attrs[attr]
+        render(attr, attrs[attr], replaces, proc(src: string): string =
+            return src)
+        attrs.del(attr)
+
+    if true:
+      let attr = $tag_in_i18n_attrs
+      if attrs.hasKey(attr):
+        var expr = attrs[attr]
+        render(attr, attrs[attr], replaces, proc(src: string): string =
+            return render_i18n_trans(src))
+        attrs.del(attr)
 
     debg(fmt"start_tag: {attrs}")
     var ret = format.replace("$1>", elem)

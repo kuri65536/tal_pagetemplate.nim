@@ -125,6 +125,7 @@ Release
 -----------------------------------------
 | version | description |
 |:-------:|:---|
+| 0.3.0   | add i18n:attributes |
 | 0.1.0   | 1st version |
 
 
