@@ -179,6 +179,15 @@ type
     ns: set[char]
     fs: seq[float]
     ss: array[2, string]
+    sub: TestObj2
+
+  TestObj4 = object
+    o2: TestObj2
+    o3: TestObj3
+
+  TestObj5 = object
+    o1: TestObj1
+    o4: TestObj4
 
 
 test "T4-1-5: use nim rtti - set, seq, array":  # {{{1
@@ -226,6 +235,46 @@ test "T4-3-1: use nim rtti - w/string expressions":  # {{{1
                              "set:${ns}, list:${fs}, array:${ss}\"></p>")
     check parse_all2(fp, v) == "set:{70, 71, 72}, list:[0.9, 1.0, 1.1], " &
                                "array:(\"a\", \"b\")"
+
+
+test "T4-4-1: use nim rtti - w/object - depth 1":  # {{{1
+    var tmp = TestObj3(sub: TestObj2(ch: 'E', str: "test4-4-1", b: true),
+                       fs: @[0.9, 1.0, 1.1], ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "obj-ch:${sub/ch} obj-str:${sub/str}" &
+                             " obj-b:${sub/b}\"></p>")
+    check parse_all2(fp, v) == "obj-ch:'E' obj-str:\"test4-4-1\" obj-b:true"
+
+
+test "T4-4-2: use nim rtti - w/object - depth 2":  # {{{1
+    var tmp = TestObj4(o2: TestObj2(),
+                       o3: TestObj3(sub: TestObj2(ch: 'A')))
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "o3-o2-ch:${o3/sub/ch}\"></p>")
+    check parse_all2(fp, v) == "o3-o2-ch:'A'"
+
+
+test "T4-4-3: use nim rtti - w/object - depth 3":  # {{{1
+    var tmp = TestObj5(o4: TestObj4(o3: TestObj3(sub: TestObj2(
+                       ch: 'B'))))
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "o4-o3-o2-ch:${o4/o3/sub/ch}\"></p>")
+    check parse_all2(fp, v) == "o4-o3-o2-ch:'B'"
+
+
+test "T4-5-1: use nim rtti - w/object - various types of properties":  # {{{1
+    # char, string, boolean already tested in 4-4-1
+    var tmp = TestObj4(o3: TestObj3(
+                       ns: {'O'..'P'}, ss: ["a", "b"],
+                       fs: @[10.3, 11.5, 12.7]))
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "ns:${o3/ns} fs:${o3/fs} ss:${o3/ss}\"></p>")
+    check parse_all2(fp, v) == ("ns:{79, 80} fs:[10.3, 11.5, 12.7] " &
+                                "ss:(\"a\", \"b\")")
 
 
 # end of file {{{1
