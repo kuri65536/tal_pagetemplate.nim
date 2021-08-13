@@ -125,6 +125,7 @@ Release
 -----------------------------------------
 | version | description |
 |:-------:|:---|
+| 0.3.1   | fix behavior for invalid values, enable enums in rtti |
 | 0.3.0   | add i18n:attributes |
 | 0.1.0   | 1st version |
 
@@ -133,8 +134,8 @@ Donations
 ---------------------
 If you are feel to nice for this software, please donation to my
 
-- Bitcoin **| 1FTBAUaVdeGG9EPsGMD5j2SW8QHNc5HzjT |**
-- Ether **| 0xd7Dc5cd13BD7636664D6bf0Ee8424CFaF6b2FA8f |**
+- Bitcoin **| 19AyoXxhm8nzgcxgbiXNPkiqNASfc999gJ |**
+- Ether **| 0x3a822c36cd5184f9ff162c7a55709f3d6d861608 |**
 - or librapay, I'm glad from smaller (about $1) and welcome more :D
 
 <!--
