@@ -189,6 +189,12 @@ type
     o1: TestObj1
     o4: TestObj4
 
+  test_enum_t = enum
+    a, b, c
+
+  TestObj6 = object
+    en: test_enum_t
+
 
 test "T4-1-5: use nim rtti - set, seq, array":  # {{{1
     var tmp = TestObj3(ns: {'F'..'H'},
@@ -201,6 +207,14 @@ test "T4-1-5: use nim rtti - set, seq, array":  # {{{1
     check parse_all2(fp, v) == "{70, 71, 72}-[1.0, 2.0]-(\"a\", \"b\")-"
     # can't serialize set[any] from integer
     # check parse_all2(fp, v) == "{'F', 'G', 'H'}-[1.0, 2.0]-(\"a\", \"b\")-"
+
+
+test "T4-1-6: use nim rtti - enum":  # {{{1
+    var tmp = TestObj6(en: test_enum_t.b)
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "enum:${en}\"></p>")
+    check parse_all2(fp, v) == "enum:b"
 
 
 test "T4-2-1: use nim rtti - w/repeat, set":  # {{{1
@@ -275,6 +289,25 @@ test "T4-5-1: use nim rtti - w/object - various types of properties":  # {{{1
                              "ns:${o3/ns} fs:${o3/fs} ss:${o3/ss}\"></p>")
     check parse_all2(fp, v) == ("ns:{79, 80} fs:[10.3, 11.5, 12.7] " &
                                 "ss:(\"a\", \"b\")")
+
+
+test "T4-6-1: use nim rtti - invalid expressions":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[0.9, 1.0, 1.1], ss: ["a", "b"])
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "no-exist:${invalid}\"></p>")
+    check parse_all2(fp, v) == "no-exist:"
+
+
+test "T4-6-2: use nim rtti - invalid properties":  # {{{1
+    var tmp = TestObj3(ns: {'F'..'H'},
+                       fs: @[0.9, 1.0, 1.1], ss: ["a", "b"],
+                       sub: TestObj2())
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"string:" &
+                             "exist:${sub/b}, no-exist:${sub/c}\"></p>")
+    check parse_all2(fp, v) == "exist:false, no-exist:"
 
 
 # end of file {{{1

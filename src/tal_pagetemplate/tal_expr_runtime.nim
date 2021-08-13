@@ -14,13 +14,14 @@ import strformat
 import strutils
 import tables
 import typeinfo
+import typetraits
 
 import ./tal_common
 
 
 type
-  runtime_null = object
-    n: int
+  runtime_null = enum
+    tal_pagetemplate_invalid_indicator
 
   runtime_buffer = object
     n: BiggestInt
@@ -32,13 +33,13 @@ type
     vars: seq[RepeatVars]
 
 
-var null_object = runtime_null()
 var rt_repeat = runtime_repeat(names: @[], vars: @[])
 var rt_buffer = runtime_buffer()
 
 
 proc make_null(): Any =  # {{{1
-    return toAny(null_object)
+    var ret = runtime_null.tal_pagetemplate_invalid_indicator
+    return toAny(ret)
 
 
 proc any_serialize*(self: Any): string =  # {{{1
@@ -86,6 +87,10 @@ proc any_serialize*(self: Any): string =  # {{{1
     of akChar:    return "'" & $self.getChar() & "'"
     of akString:  return "\"" & self.getString() & "\""
     of akBool:    return $(self.getBool())
+    of akEnum:
+        if self.getEnumField() == "tal_pagetemplate_invalid_indicator":
+            return ""  # refer make_null
+        return self.getEnumField()
     else:
         # akBool, akEnum:
         return $self
@@ -95,6 +100,7 @@ proc parse_expr_hier(self: Any, parts: seq[string]): Any =  # {{{1
     if len(parts) < 1:
         return self
     var part = parts[0]
+    # debg(fmt"expr_hier: {part}...")
     case self.kind():
     of akArray, akSequence:
         try:
@@ -108,7 +114,7 @@ proc parse_expr_hier(self: Any, parts: seq[string]): Any =  # {{{1
             var tmp = self[part]
             return parse_expr_hier(tmp, parts[1 ..^ 1])
         except ValueError:
-            discard
+            debg(fmt"rtti-expr: can't find '{part}'")
     else:
         discard
     return make_null()
@@ -116,6 +122,7 @@ proc parse_expr_hier(self: Any, parts: seq[string]): Any =  # {{{1
 
 proc tales_path_runtime*(self: TalVars, parts: seq[string]): Any =  # {{{1
     var name = parts[0]
+    # debg(fmt"tales_path: {name}...")
     if not self.root_runtime.hasKey(name):
         return make_null()
     var ret = self.root_runtime[name].obj
