@@ -25,6 +25,11 @@ jobs:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
+      - name: install gettext
+        id: install-gettext
+        run: |
+          sudo apt install gettext
+
       - name: Cache choosenim
         id: cache-choosenim
         uses: actions/cache@v1
@@ -48,4 +53,7 @@ jobs:
         run: |
           export PATH=$HOME/.nimble/bin:$PATH
           echo $PATH
-          nimble test
+          make catalogs
+          nimble install https://github.com/kuri65536/nim-i18n
+          echo yes | nimble test
+

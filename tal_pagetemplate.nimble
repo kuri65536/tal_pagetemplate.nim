@@ -9,4 +9,3 @@ srcDir        = "src"
 # Dependencies
 requires "nim >= 0.19.4"
 requires "https://github.com/kuri65536/nim-i18n >= 0.1.3"
-

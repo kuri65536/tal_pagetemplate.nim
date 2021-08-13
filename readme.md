@@ -13,12 +13,16 @@ but I refer the behavior of TAL in official TAL document::
     https://pagetemplates.readthedocs.io/en/latest/tal.html
 
 
+![test](https://github.com/kuri65536/tal_pagetemplate.nim/actions/workflows/main.yml/badge.svg)
+
+
+
 Requirements
 -----------------------------------------
 - nim (>= 0.19.4)
 - nim-i18n (>= 0.1.2)
 - xml of PTAL
-- json for variables
+- json data or nim objects for variables
 
 
 ### In Debian buster
@@ -87,7 +91,7 @@ see the top of source code, it is MPL2.0.
 
 sample outputs
 -----------------------------------------
-test xml::
+### test xml::
 
 ```xml
 <!DOCTYPE HTML>
@@ -118,6 +122,30 @@ its output::
   <!-- this is comment -->
 </body>
 </html>
+```
+
+
+### variables
+see test1.nim or test2.nim, in test2.nim:
+
+```
+type
+  TestObj2 = object
+    f: float
+    f32: float32
+    f64: float64
+    ch: char
+    str: string
+    b: bool
+
+
+test "T4-1-3: use nim rtti - f, f32-64":
+    var tmp = TestObj2(f: 1.0, f32: 2.0, f64: 3.0)
+    var v = toAny(tmp)
+    var fp = newStringStream("<p tal:replace=\"f\"> </p>," &
+                             "<p tal:replace=\"f32\"> </p>," &
+                             "<p tal:replace=\"f64\"> </p>,")
+    check parse_all2(fp, v) == "1.0,2.0,3.0,"
 ```
 
 
