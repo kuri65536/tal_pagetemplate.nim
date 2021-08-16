@@ -277,7 +277,6 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
             var name = seq[0]  # TODO(shimoda): namespace...
             var expression = join(seq[1 ..^ 1], " ")
             expression = expression.strip()
-            expression = self.expr(expression)
             expression = cb(expression)
             replaces.add(name, expression)
         debg(fmt"tal:attributes -> replaces: {replaces}")
@@ -287,7 +286,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
       if attrs.hasKey(attr):
         var expr = attrs[attr]
         render(attr, attrs[attr], replaces, proc(src: string): string =
-            return src)
+            return self.expr(src))
         attrs.del(attr)
 
     if true:
