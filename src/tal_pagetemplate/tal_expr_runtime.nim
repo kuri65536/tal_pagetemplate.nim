@@ -219,19 +219,28 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             yield j
             n += 1
     of akSet:
+      when NimMajor > 0:
+            ## todo: e.elements cause segfault
+            var j = initRepeatVars(0, 1)
+            self.push_var(name, path, toAny(rt_buffer.n))
+            self.push_repeat_var(name, j)
+            yield j
+            self.pop_repeat_var_runtime(name)
+            self.pop_var_runtime(name)
+      else:
         var (n, max) = (0, 0)
         for i in expr.elements():
             max += 1
         for i in expr.elements():
-            self.pop_repeat_var_runtime(name)
-            self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)
             rt_buffer.n = i
             self.push_var(name, path, toAny(rt_buffer.n))
             self.push_repeat_var(name, j)
             yield j
+            self.pop_repeat_var_runtime(name)
+            self.pop_var_runtime(name)
             n += 1
-    else:
+    else:  # akObject, akTuple, ..., akInt or etc
         var j = initRepeatVars(0, 1)
         self.push_var(name, path, expr)
         self.push_repeat_var(name, j)
