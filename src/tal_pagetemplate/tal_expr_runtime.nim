@@ -159,7 +159,7 @@ proc tales_meta_runtime*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
 
 proc push_var(self: var TalVars, name, path: string, vobj: Any): void =  # {{{1
     var varinfo = (path, vobj)
-    self.root_runtime.add(name, varinfo)
+    self.root_runtime[name] = varinfo
 
 
 proc push_repeat_var(self: var TalVars,   # {{{1
@@ -168,7 +168,7 @@ proc push_repeat_var(self: var TalVars,   # {{{1
         discard
     else:
         var tmp = toAny(rt_repeat)
-        self.root_runtime.add("repeat", ("", tmp))
+        self.root_runtime["repeat"] = ("", tmp)
         rt_repeat.names = @[]
         rt_repeat.vars = @[]
     rt_repeat.names.add(name)
@@ -252,13 +252,13 @@ proc copy_from*(self: var Table[string, tuple[path: string, obj: Any]],  # {{{1
     of akTuple, akObject:
         for name, fld in vars.fields():
             debg(fmt"copy_rtti: {name}-{fld.kind}")
-            self.add(name, ("", fld))
+            self[name] = ("", fld)
     of akArray, akSequence:
         var max = len(vars)
         for i in 0 .. max:
             var fld = vars[i]
             debg(fmt"rtti-copy: {i}-{fld.kind}")
-            self.add($i, ("", fld))
+            self[$i] = ("", fld)
     else:
         discard
 

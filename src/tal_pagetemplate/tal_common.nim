@@ -278,7 +278,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
             var expression = join(seq[1 ..^ 1], " ")
             expression = expression.strip()
             expression = cb(expression)
-            replaces.add(name, expression)
+            replaces[name] = expression
         debg(fmt"tal:attributes -> replaces: {replaces}")
 
     if true:

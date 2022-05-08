@@ -9,7 +9,7 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#
 import json
-import ospaths
+import os
 import streams
 import strutils
 import system

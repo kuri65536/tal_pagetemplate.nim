@@ -97,7 +97,7 @@ proc tales_meta_json*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
 proc push_var*(self: var TalVars, name, path, vobj: string): void =  # {{{1
     var vobj = json.parseJson(vobj)
     var varinfo = (path, vobj)
-    self.root.add(name, varinfo)
+    self.root[name] = varinfo
 
 
 proc push_repeat_var*(self: var TalVars,   # {{{1
@@ -107,7 +107,7 @@ proc push_repeat_var*(self: var TalVars,   # {{{1
         robj = self.root["repeat"].obj
     else:
         robj = newJObject()
-        self.root.add("repeat", ("", robj))
+        self.root["repeat"] = ("", robj)
     robj.add(name, repeat_var)
 
 

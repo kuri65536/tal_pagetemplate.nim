@@ -139,7 +139,7 @@ proc parse_tagclose(self: var LocalParser): string =  # {{{1
 
 
 proc parse_attr(self: var LocalParser, name, value: string): string =  # {{{1
-    self.stacks[0].attrs.add(name, value)
+    self.stacks[0].attrs[name] = value
     debg(fmt"found attr {self.stacks[0].attrs}")
     return ""  # wait for close
 
