@@ -14,7 +14,6 @@ import tables
 import typeinfo
 
 import ./tal_common
-import ./tal_repeat
 
 import ./tal_expr_json
 import ./tal_expr_runtime

@@ -19,9 +19,11 @@ import tal_pagetemplate
 import tal_pagetemplate/tal_i18n
 
 
+#[
 type
   Vars = ref object of RootObj
     repeat_src: seq[int]
+]#
 
 
 proc parse_all(fp: Stream): string =  # {{{1

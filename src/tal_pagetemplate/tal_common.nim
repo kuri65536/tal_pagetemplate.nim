@@ -284,7 +284,6 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     if true:
       let attr = $tag_in_attributes
       if attrs.hasKey(attr):
-        var expr = attrs[attr]
         render(attr, attrs[attr], replaces, proc(src: string): string =
             return self.expr(src))
         attrs.del(attr)
@@ -292,7 +291,6 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     if true:
       let attr = $tag_in_i18n_attrs
       if attrs.hasKey(attr):
-        var expr = attrs[attr]
         render(attr, attrs[attr], replaces, proc(src: string): string =
             return render_i18n_trans(src))
         attrs.del(attr)

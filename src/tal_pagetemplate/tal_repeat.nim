@@ -8,7 +8,6 @@ v.2.0. If a copy of the MPL was not distributed with this file,
 You can obtain one at https://mozilla.org/MPL/2.0/.
 
 ]#  # import {{{1
-import json
 import parsexml
 import strformat
 import strutils
@@ -138,7 +137,7 @@ proc parse_tagend(self: var TagRepeat, name: string  # {{{1
 
 proc parse_tree*(self: var TagRepeat, x: XmlParser  # {{{1
                  ): tuple[d: string, f: bool] =
-    var (d, f) = ("", true)
+    var d = ""
     case x.kind
     of xmlEof:
         return self.parse_tagend(self.elem)
