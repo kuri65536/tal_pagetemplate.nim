@@ -134,17 +134,17 @@ proc pop_var_in_repeat_json(self: var TalVars, name: string): void =  # {{{1
 
 
 iterator parse_repeat_seq_json*(self: var TalVars, name, path: string,  # {{{1
-                                expr: JsonNode): RepeatVars =
-    case expr.kind:
+                                jobj: JsonNode): RepeatVars =
+    case jobj.kind:
     of JNull, JInt, JFloat, JBool, JObject:
         var j = initRepeatVars(0, 1)
-        self.push_var_json(name, path, $expr)
+        self.push_var_json(name, path, $jobj)
         self.push_repeat_var_json(name, j.make_repeatvar())
         yield j
         self.pop_var_in_repeat_json(name)
     of JString:
-        var (n, max) = (0, len(expr.str))
-        for i in expr.str:
+        var (n, max) = (0, len(jobj.str))
+        for i in jobj.str:
             var j = initRepeatVars(n, max)
             self.push_var_json(name, path, $i)
             self.push_repeat_var_json(name, j.make_repeatvar())
@@ -152,8 +152,8 @@ iterator parse_repeat_seq_json*(self: var TalVars, name, path: string,  # {{{1
             self.pop_var_in_repeat_json(name)
             n += 1
     of JArray:
-        var (n, max) = (0, len(expr.elems))
-        for i in expr.elems:
+        var (n, max) = (0, len(jobj.elems))
+        for i in jobj.elems:
             var j = initRepeatVars(n, max)
             self.push_var_json(name, path, $i)
             self.push_repeat_var_json(name, j.make_repeatvar())

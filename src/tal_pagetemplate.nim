@@ -218,26 +218,27 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
     for name, fld in vars.getFields():
         vars_tal.root[name] = ("", fld)
 
-    proc parser_json(expr: string): string =
-        return vars_tal.tales_parse(expr)
+    proc parser_json(expr_str: string): string =
+        return vars_tal.tales_parse(expr_str)
 
-    proc parser_json_repeat(path, name, expr: string): iterator(): RepeatVars =
-        var (meta, exprs) = vars_tal.tales_parse_meta(expr)
+    proc parser_json_repeat(path, name, expr_str: string
+                            ): iterator(): RepeatVars =
+        var (meta, exprs) = vars_tal.tales_parse_meta(expr_str)
         debg(fmt"rep-json: {meta}->{exprs}")
         var e = vars_tal.tales_meta_json(meta, exprs)
-        debg(fmt"rep-json: {expr}->" & json_to_string(e))
+        debg(fmt"rep-json: {expr_str}->" & json_to_string(e))
         iterator ret(): RepeatVars =
             for i in vars_tal.parse_repeat_seq_json(name, path, e):
                 yield i
         return ret
 
-    proc parser_json_defvars(expr, path: string): void =
-        vars_expr.parse_define(vars_tal, expr, path)
+    proc parser_json_defvars(expr_str, path: string): void =
+        vars_expr.parse_define(vars_tal, expr_str, path)
 
     proc parser_json_leavevars(path: string): void =
         vars_tal.leave_define(path)
 
-    vars_expr = TalExpr(expr: parser_json,
+    vars_expr = TalExpr(expr_eval: parser_json,
                         repeat: parser_json_repeat,
                         defvars: parser_json_defvars,
                         levvars: parser_json_leavevars,
@@ -252,11 +253,12 @@ proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
             root_runtime: initTable[string, tuple[path: string, obj: Any]]())
     vars_tal.root_runtime.copy_from(vars)
 
-    proc parser_rtti(expr: string): string =
-        return vars_tal.tales_parse(expr)
+    proc parser_rtti(expr_str: string): string =
+        return vars_tal.tales_parse(expr_str)
 
-    proc parser_rtti_repeat(path, name, expr: string): iterator(): RepeatVars =
-        var (meta, exprs) = vars_tal.tales_parse_meta(expr)
+    proc parser_rtti_repeat(path, name, expr_str: string
+                            ): iterator(): RepeatVars =
+        var (meta, exprs) = vars_tal.tales_parse_meta(expr_str)
         debg(fmt"rep-json: {meta}->{exprs}")
         var e = vars_tal.tales_meta_runtime(meta, exprs)
         debg(fmt"rep-rtti: {any_serialize(e)}")
@@ -265,13 +267,13 @@ proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
                 yield i
         return ret
 
-    proc parser_rtti_defvars(expr, path: string): void =
-        vars_expr.parse_define(vars_tal, expr, path)
+    proc parser_rtti_defvars(expr_str, path: string): void =
+        vars_expr.parse_define(vars_tal, expr_str, path)
 
     proc parser_rtti_leavevars(path: string): void =
         vars_tal.leave_define(path)
 
-    vars_expr = TalExpr(expr: parser_rtti,
+    vars_expr = TalExpr(expr_eval: parser_rtti,
                         repeat: parser_rtti_repeat,
                         defvars: parser_rtti_defvars,
                         levvars: parser_rtti_leavevars,

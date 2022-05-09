@@ -206,10 +206,10 @@ proc pop_var_in_repeat_runtime(self: var TalVars, name: string): void =  # {{{1
 
 
 iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
-                                   name, path: string, expr: Any): RepeatVars =
-    case expr.kind:
+                                   name, path: string, vobj: Any): RepeatVars =
+    case vobj.kind:
     of akString:
-        var tmp = $expr
+        var tmp = vobj.getString()
         var (n, max) = (0, len(tmp))
         for i in tmp:
             var j = initRepeatVars(n, max)
@@ -220,10 +220,10 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             self.pop_var_in_repeat_runtime(name)
             n += 1
     of akArray, akSequence:
-        var (n, max) = (0, len(expr))
+        var (n, max) = (0, len(vobj))
         for i in 0 .. max - 1:
             var j = initRepeatVars(n, max)
-            var tmp = expr[i]
+            var tmp = vobj[i]
             self.push_var_runtime(name, path, tmp)
             self.push_repeat_var_runtime(name, j)
             yield j
@@ -251,7 +251,7 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             n += 1
     else:  # akObject, akTuple, ..., akInt or etc
         var j = initRepeatVars(0, 1)
-        self.push_var_runtime(name, path, expr)
+        self.push_var_runtime(name, path, vobj)
         self.push_repeat_var_runtime(name, j)
         yield j
         self.pop_var_in_repeat_runtime(name)

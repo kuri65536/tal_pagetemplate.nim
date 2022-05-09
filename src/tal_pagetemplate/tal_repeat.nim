@@ -16,9 +16,9 @@ import tables
 import ./tal_common
 
 
-proc initTagRepeat*(elem, path, name, expr: string, attrs: Attrs,  # {{{1
+proc initTagRepeat*(elem, path, name, expr_str: string, attrs: Attrs,  # {{{1
                     exprs: TalExpr): TagRepeat =
-    var ret = TagRepeat(elem: elem, name: name, expr: expr)
+    var ret = TagRepeat(elem: elem, name: name, expr_str: expr_str)
     ret.path = path
     ret.attrs = attrs  # copy.
     ret.current = RepeatStatus()
@@ -104,9 +104,9 @@ proc render_repeat_tag_start(self: TagRepeat, vars: RepeatVars  # {{{1
     ret &= ">"
 
     if self.attrs.hasKey("tal:content"):
-        var expr = self.attrs["tal:content"]
-        expr = self.exprs.expr(expr)
-        ret &= expr
+        var expr_str = self.attrs["tal:content"]
+        expr_str = self.exprs.expr_eval(expr_str)
+        ret &= expr_str
         debg(fmt"tag-start(content): {ret}")
         return (false, ret)
 
@@ -122,7 +122,8 @@ proc parse_tagend(self: var TagRepeat, name: string  # {{{1
         return ("", true)
 
     debg("finishing repeat...")
-    var (tags, iter) = ("", self.exprs.repeat(self.path, self.name, self.expr))
+    var (tags, iter) = ("", self.exprs.repeat(self.path,
+                                              self.name, self.expr_str))
     var i = iter()
     while not finished(iter):
         var (f, d) = self.render_repeat_tag_start(i)

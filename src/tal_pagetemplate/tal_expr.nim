@@ -171,7 +171,7 @@ proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1
         var name = seq[0]
         var expression = join(seq[1 ..^ 1], " ")
         expression = expression.strip()
-        expression = self.expr(expression)
+        expression = self.expr_eval(expression)
         var var_path = if f_local: path else: ""
         vars.push_var(name, var_path, expression)
 

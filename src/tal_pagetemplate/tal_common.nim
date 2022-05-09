@@ -48,7 +48,7 @@ type
 
   TagRepeat* = ref object of RootObj  # {{{1
     elem*, elem_prev*, path*: string
-    name*, expr*: string
+    name*, expr_str*: string
     attrs*: Attrs
     f_omit_tag*: bool
     exprs*: TalExpr
@@ -62,9 +62,9 @@ type
     repeat*: TagRepeat
 
   TalExpr* = ref object of RootObj  # {{{1
-    expr*: proc(expr: string): string
-    repeat*: proc(path, name, expr: string): iterator(): RepeatVars
-    defvars*: proc(expr, path: string): void
+    expr_eval*: proc(expr_str: string): string
+    repeat*: proc(path, name, expr_str: string): iterator(): RepeatVars
+    defvars*: proc(expr_str, path: string): void
     levvars*: proc(path: string): void
 
     stacks_i18n*: seq[tuple[path, domain: string]]
@@ -199,31 +199,31 @@ proc tal_parse_content(self: TalExpr, src: string): string =  # {{{1
         f_escape = false
         src = src[10 ..^ 1]
 
-    var ret = self.expr(src)
+    var ret = self.expr_eval(src)
     if f_escape:
         ret = xmltree.escape(ret)
     return ret
 
 
 iterator tal_parse_multi_statements*(src: string): string =  # {{{1
-    var (expr, f_prev_delim) = ("", false)
+    var (expr_str, f_prev_delim) = ("", false)
     for ch in src:
         if ch == ';':
             if f_prev_delim:
-                expr &= $ch
+                expr_str &= $ch
                 f_prev_delim = false  # escaped by doubled ';'
             else:
                 f_prev_delim = true
         elif f_prev_delim:
-            debg("tal_parse_multi_statements: " & expr)
-            yield expr
-            expr = $ch
+            debg("tal_parse_multi_statements: " & expr_str)
+            yield expr_str
+            expr_str = $ch
             f_prev_delim = false
         else:
-            expr &= $ch
-    if len(expr) > 0:
-        debg("tal_parse_multi_statements: " & expr)
-        yield expr
+            expr_str &= $ch
+    if len(expr_str) > 0:
+        debg("tal_parse_multi_statements: " & expr_str)
+        yield expr_str
 
 
 proc render_endtag*(src: string): string =  # {{{1
@@ -264,10 +264,10 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     var replaces = newAttrs()
     var attrs = attrs
 
-    proc render(attr, expr: string, replaces: var Attrs,
+    proc render(attr, expr_str: string, replaces: var Attrs,
                 cb: proc(src: string): string) =
-        debg(fmt"tal:attributes -> {expr}")
-        for src in tal_parse_multi_statements(expr):
+        debg(fmt"tal:attributes -> {expr_str}")
+        for src in tal_parse_multi_statements(expr_str):
             debg(fmt"tal:attributes -> {src}")
             # TODO(shimoda): escape `;` by doubling.
             var src = src.strip()
@@ -285,7 +285,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
       let attr = $tag_in_attributes
       if attrs.hasKey(attr):
         render(attr, attrs[attr], replaces, proc(src: string): string =
-            return self.expr(src))
+            return self.expr_eval(src))
         attrs.del(attr)
 
     if true:
@@ -321,59 +321,59 @@ proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
                       attrs: var Attrs): tuple[n: set[TagProcess], d: string] =
     var ret = {tag_in_notals}
     if attrs.hasKey("tal:define"):
-        var expr = attrs["tal:define"]
+        let expr_str = attrs["tal:define"]
         attrs.del("tal:define")
-        self.defvars(expr, path)  # TODO(shimoda): path in repeat
+        self.defvars(expr_str, path)  # TODO(shimoda): path in repeat
 
     if true:
       let attr = "i18n:domain"
       if attrs.hasKey(attr):
-        var expr = attrs[attr]
+        let domain = attrs[attr]
         attrs.del(attr)
-        enter_i18n_domain(self.stacks_i18n, path, expr)
+        enter_i18n_domain(self.stacks_i18n, path, domain)
 
     if true:
       let attr = "tal:omit-tag"
       if attrs.hasKey(attr):
-        var expr = attrs[attr]
+        var expr_str = attrs[attr]
         attrs.del(attr)
-        if len(expr) < 1:
+        if len(expr_str) < 1:
             ret.incl(tag_in_omit_tag)
         else:
-            expr = self.expr(expr)
-            if not tales_bool_expr(expr):
+            expr_str = self.expr_eval(expr_str)
+            if not tales_bool_expr(expr_str):
                 ret.incl(tag_in_omit_tag)
 
     if true:
       let attr = "tal:condition"
       if attrs.hasKey(attr):
-        var expr = self.expr(attrs[attr])
+        let expr_str = self.expr_eval(attrs[attr])
         attrs.del(attr)
-        if not tales_bool_expr(expr):
+        if not tales_bool_expr(expr_str):
             return ({tag_in_replace}, "")
 
     if attrs.hasKey("tal:replace"):
-        var expr = attrs["tal:replace"]
-        return ({tag_in_replace}, self.expr(expr))
+        var expr_str = attrs["tal:replace"]
+        return ({tag_in_replace}, self.expr_eval(expr_str))
 
     if true:
       let attr = "tal:content"
       if attrs.hasKey(attr):
-        var expr = self.tal_parse_content(attrs[attr])
+        let expr_str = self.tal_parse_content(attrs[attr])
         ret.incl(tag_in_content)
         if ret.contains(tag_in_omit_tag):
-            return (ret, expr)
-        return (ret, self.render_attrs(name, expr, attrs))
+            return (ret, expr_str)
+        return (ret, self.render_attrs(name, expr_str, attrs))
 
     if true:
       let attr = $tag_in_i18n
       if attrs.hasKey(attr):
-        var expr = render_i18n_trans(attrs[attr])
+        let txt = render_i18n_trans(attrs[attr])
         attrs.del(attr)
         ret.incl(tag_in_content)
         if ret.contains(tag_in_omit_tag):
-            return (ret, expr)
-        return (ret, self.render_attrs(name, expr, attrs))
+            return (ret, txt)
+        return (ret, self.render_attrs(name, txt, attrs))
 
     if ret.contains(tag_in_omit_tag):
         return (ret, "")
