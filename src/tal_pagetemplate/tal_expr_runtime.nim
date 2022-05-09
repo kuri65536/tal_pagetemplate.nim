@@ -157,12 +157,21 @@ proc tales_meta_runtime*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
     return toAny(rt_buffer.s)
 
 
-proc push_var(self: var TalVars, name, path: string, vobj: Any): void =  # {{{1
+proc push_var_runtime(self: var TalVars, name, path: string, vobj: Any  # {{{1
+                      ): void =
     var varinfo = (path, vobj)
     self.root_runtime[name] = varinfo
 
 
-proc push_repeat_var(self: var TalVars,   # {{{1
+proc push_var_runtime*(self: var TalVars, name, path, expr_str: string  # {{{1
+                       ): void =
+    ## todo: path expantion?
+    let vobj = self.tales_meta_runtime("", @[expr_str])
+    var varinfo = (path, vobj)
+    self.root_runtime[name] = varinfo
+
+
+proc push_repeat_var_runtime(self: var TalVars,   # {{{1
                      name: string, repeat_var: RepeatVars): void =
     if self.root_runtime.hasKey("repeat"):
         discard
@@ -191,6 +200,11 @@ proc pop_repeat_var_runtime*(self: var TalVars, name: string): void =  # {{{1
     rt_repeat.vars.del(n)
 
 
+proc pop_var_in_repeat_runtime(self: var TalVars, name: string): void =  # {{{1
+    self.pop_repeat_var_runtime(name)
+    self.pop_var_runtime(name)
+
+
 iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
                                    name, path: string, expr: Any): RepeatVars =
     case expr.kind:
@@ -198,34 +212,31 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
         var tmp = $expr
         var (n, max) = (0, len(tmp))
         for i in tmp:
-            self.pop_repeat_var_runtime(name)
-            self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)
             var tmp = i
-            self.push_var(name, path, toAny(tmp))
-            self.push_repeat_var(name, j)
+            self.push_var_runtime(name, path, toAny(tmp))
+            self.push_repeat_var_runtime(name, j)
             yield j
+            self.pop_var_in_repeat_runtime(name)
             n += 1
     of akArray, akSequence:
         var (n, max) = (0, len(expr))
         for i in 0 .. max - 1:
-            self.pop_repeat_var_runtime(name)
-            self.pop_var_runtime(name)
             var j = initRepeatVars(n, max)
             var tmp = expr[i]
-            self.push_var(name, path, tmp)
-            self.push_repeat_var(name, j)
+            self.push_var_runtime(name, path, tmp)
+            self.push_repeat_var_runtime(name, j)
             yield j
+            self.pop_var_in_repeat_runtime(name)
             n += 1
     of akSet:
       when NimMajor > 0:
             ## todo: e.elements cause segfault
             var j = initRepeatVars(0, 1)
-            self.push_var(name, path, toAny(rt_buffer.n))
-            self.push_repeat_var(name, j)
+            self.push_var_runtime(name, path, toAny(rt_buffer.n))
+            self.push_repeat_var_runtime(name, j)
             yield j
-            self.pop_repeat_var_runtime(name)
-            self.pop_var_runtime(name)
+            self.pop_var_in_repeat_runtime(name)
       else:
         var (n, max) = (0, 0)
         for i in expr.elements():
@@ -233,17 +244,17 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
         for i in expr.elements():
             var j = initRepeatVars(n, max)
             rt_buffer.n = i
-            self.push_var(name, path, toAny(rt_buffer.n))
-            self.push_repeat_var(name, j)
+            self.push_var_runtime(name, path, toAny(rt_buffer.n))
+            self.push_repeat_var_runtime(name, j)
             yield j
-            self.pop_repeat_var_runtime(name)
-            self.pop_var_runtime(name)
+            self.pop_var_in_repeat_runtime(name)
             n += 1
     else:  # akObject, akTuple, ..., akInt or etc
         var j = initRepeatVars(0, 1)
-        self.push_var(name, path, expr)
-        self.push_repeat_var(name, j)
+        self.push_var_runtime(name, path, expr)
+        self.push_repeat_var_runtime(name, j)
         yield j
+        self.pop_var_in_repeat_runtime(name)
 
 
 proc copy_from*(self: var Table[string, tuple[path: string, obj: Any]],  # {{{1

@@ -94,13 +94,13 @@ proc tales_meta_json*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
     return newJString(ret)
 
 
-proc push_var*(self: var TalVars, name, path, vobj: string): void =  # {{{1
+proc push_var_json*(self: var TalVars, name, path, vobj: string): void =  # {{{1
     var vobj = json.parseJson(vobj)
     var varinfo = (path, vobj)
     self.root[name] = varinfo
 
 
-proc push_repeat_var*(self: var TalVars,   # {{{1
+proc push_repeat_var_json*(self: var TalVars,   # {{{1
                      name: string, repeat_var: JsonNode): void =
     var robj: JsonNode
     if self.root.hasKey("repeat"):
@@ -111,13 +111,13 @@ proc push_repeat_var*(self: var TalVars,   # {{{1
     robj.add(name, repeat_var)
 
 
-proc pop_var*(self: var TalVars, name: string): void =  # {{{1
+proc pop_var_json*(self: var TalVars, name: string): void =  # {{{1
     if not self.root.hasKey(name):
         return
     self.root.del(name)
 
 
-proc pop_repeat_var*(self: var TalVars, name: string): void =  # {{{1
+proc pop_repeat_var_json(self: var TalVars, name: string): void =  # {{{1
     if not self.root.hasKey("repeat"):
         return
     var robj = self.root["repeat"].obj
@@ -128,33 +128,37 @@ proc pop_repeat_var*(self: var TalVars, name: string): void =  # {{{1
         self.root.del("reeat")
 
 
+proc pop_var_in_repeat_json(self: var TalVars, name: string): void =  # {{{1
+    self.pop_repeat_var_json(name)
+    self.pop_var_json(name)
+
+
 iterator parse_repeat_seq_json*(self: var TalVars, name, path: string,  # {{{1
                                 expr: JsonNode): RepeatVars =
     case expr.kind:
     of JNull, JInt, JFloat, JBool, JObject:
         var j = initRepeatVars(0, 1)
-        self.push_var(name, path, $expr)
-        self.push_repeat_var(name, j.make_repeatvar())
+        self.push_var_json(name, path, $expr)
+        self.push_repeat_var_json(name, j.make_repeatvar())
         yield j
+        self.pop_var_in_repeat_json(name)
     of JString:
         var (n, max) = (0, len(expr.str))
         for i in expr.str:
-            self.pop_repeat_var(name)
-            self.pop_var(name)
             var j = initRepeatVars(n, max)
-            self.push_var(name, path, $i)
-            self.push_repeat_var(name, j.make_repeatvar())
+            self.push_var_json(name, path, $i)
+            self.push_repeat_var_json(name, j.make_repeatvar())
             yield j
+            self.pop_var_in_repeat_json(name)
             n += 1
     of JArray:
         var (n, max) = (0, len(expr.elems))
         for i in expr.elems:
-            self.pop_repeat_var(name)
-            self.pop_var(name)
             var j = initRepeatVars(n, max)
-            self.push_var(name, path, $i)
-            self.push_repeat_var(name, j.make_repeatvar())
+            self.push_var_json(name, path, $i)
+            self.push_repeat_var_json(name, j.make_repeatvar())
             yield j
+            self.pop_var_in_repeat_json(name)
             n += 1
 
 

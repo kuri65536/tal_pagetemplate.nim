@@ -139,23 +139,17 @@ proc tales_parse*(self: TalVars, src: string): string =  # {{{1
         return ret
 
 
-iterator parse_repeat_seq*(self: var TalVars, name, path, src: string  # {{{1
-                           ): RepeatVars =
-    var (meta, exprs) = self.tales_parse_meta(src)
+proc push_var(self: var TalVars, name, path, expr_str: string): void =  # {{{1
     if self.f_json:
-        debg(fmt"rep-json: {meta}->{exprs}")
-        var expr = self.tales_meta_json(meta, exprs)
-        debg(fmt"rep-json: {src}->" & json_to_string(expr))
-        for i in self.parse_repeat_seq_json(name, path, expr):
-            yield i
-        self.pop_var("repeat")
-        self.pop_var(name)
+        self.push_var_json(name, path, expr_str)
     else:
-        var expr = self.tales_meta_runtime(meta, exprs)
-        debg(fmt"rep-rtti: {any_serialize(expr)}")
-        for i in self.parse_repeat_seq_runtime(name, path, expr):
-            yield i
-        self.pop_var_runtime("repeat")
+        self.push_var_runtime(name, path, expr_str)
+
+
+proc pop_var(self: var TalVars, name: string): void =  # {{{1
+    if self.f_json:
+        self.pop_var_json(name)
+    else:
         self.pop_var_runtime(name)
 
 

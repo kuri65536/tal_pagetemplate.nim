@@ -222,8 +222,12 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
         return vars_tal.tales_parse(expr)
 
     proc parser_json_repeat(path, name, expr: string): iterator(): RepeatVars =
+        var (meta, exprs) = vars_tal.tales_parse_meta(expr)
+        debg(fmt"rep-json: {meta}->{exprs}")
+        var e = vars_tal.tales_meta_json(meta, exprs)
+        debg(fmt"rep-json: {expr}->" & json_to_string(e))
         iterator ret(): RepeatVars =
-            for i in vars_tal.parse_repeat_seq(name, path, expr):
+            for i in vars_tal.parse_repeat_seq_json(name, path, e):
                 yield i
         return ret
 
@@ -252,8 +256,12 @@ proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
         return vars_tal.tales_parse(expr)
 
     proc parser_rtti_repeat(path, name, expr: string): iterator(): RepeatVars =
+        var (meta, exprs) = vars_tal.tales_parse_meta(expr)
+        debg(fmt"rep-json: {meta}->{exprs}")
+        var e = vars_tal.tales_meta_runtime(meta, exprs)
+        debg(fmt"rep-rtti: {any_serialize(e)}")
         iterator ret(): RepeatVars =
-            for i in vars_tal.parse_repeat_seq(name, path, expr):
+            for i in vars_tal.parse_repeat_seq_runtime(name, path, e):
                 yield i
         return ret
 
