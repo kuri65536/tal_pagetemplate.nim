@@ -240,13 +240,16 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             yield j
             self.pop_var_in_repeat_runtime(name)
       else:
-        let max = len(expr.elements())
-        for n, i in expr.elements():
+        var (n, max) = (0, 0)
+        for i in vobj.elements():
+            max += 1
+        for i in vobj.elements():
             var j = initRepeatVars(n, max)
             rt_buffer.n = i
             self.push_var_in_repeat_runtime(name, path, toAny(rt_buffer.n), j)
             yield j
             self.pop_var_in_repeat_runtime(name)
+            n += 1
     else:  # akObject, akTuple, ..., akInt or etc
         var j = initRepeatVars(0, 1)
         self.push_var_in_repeat_runtime(name, path, vobj, j)
