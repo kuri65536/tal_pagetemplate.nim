@@ -146,7 +146,7 @@ proc push_var(self: var TalVars, name, path, expr_str: string): void =  # {{{1
         self.push_var_runtime(name, path, expr_str)
 
 
-proc pop_var(self: var TalVars, name: string): void =  # {{{1
+proc pop_var*(self: var TalVars, name: string): void =  # {{{1
     if self.f_json:
         self.pop_var_json(name)
     else:
@@ -176,15 +176,17 @@ proc parse_define*(self: var TalExpr, vars: var TalVars,  # {{{1
         vars.push_var(name, var_path, expression)
 
 
-proc leave_define*(self: var TalVars,  # {{{1
-                   path: string): void =
-    for name, tup in self.root.pairs():
+proc leave_define*[T](tbl: Table[string, tuple[path: string, obj: T]],  # {{{1
+                      path: string): seq[string] =
+    var names: seq[string]
+    for name, tup in tbl.pairs():
         var path_var = tup.path
         if len(path_var) < 1:
             continue
         if path != path_var:
             continue
-        self.pop_var(name)
+        names.add(name)
+    return names
 
 
 proc parse_attributes*(self: TalVars, src: string  # {{{1

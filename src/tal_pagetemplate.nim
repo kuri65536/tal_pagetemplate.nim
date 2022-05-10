@@ -236,7 +236,9 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
         vars_expr.parse_define(vars_tal, expr_str, path)
 
     proc parser_json_leavevars(path: string): void =
-        vars_tal.leave_define(path)
+        let names = leave_define(vars_tal.root, path)
+        for name in names:
+            vars_tal.pop_var(name)
 
     vars_expr = TalExpr(expr_eval: parser_json,
                         repeat: parser_json_repeat,
@@ -271,7 +273,9 @@ proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
         vars_expr.parse_define(vars_tal, expr_str, path)
 
     proc parser_rtti_leavevars(path: string): void =
-        vars_tal.leave_define(path)
+        let names = leave_define(vars_tal.root_runtime, path)
+        for name in names:
+            vars_tal.pop_var(name)
 
     vars_expr = TalExpr(expr_eval: parser_rtti,
                         repeat: parser_rtti_repeat,
