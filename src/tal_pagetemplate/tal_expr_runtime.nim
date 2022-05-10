@@ -1,6 +1,6 @@
 #[
 ## license <!-- {{{1 -->
-Copyright (c) 2020, shimoda as kuri65536 _dot_ hot mail _dot_ com
+Copyright (c) 2022, 2020, shimoda as kuri65536 _dot_ hot mail _dot_ com
                        ( email address: convert _dot_ to . and joint string )
 
 This Source Code Form is subject to the terms of the Mozilla Public License,
@@ -200,6 +200,12 @@ proc pop_repeat_var_runtime*(self: var TalVars, name: string): void =  # {{{1
     rt_repeat.vars.del(n)
 
 
+proc push_var_in_repeat_runtime(self: var TalVars, name, path: string,  # {{{1
+                                vobj: Any, vrepeat: RepeatVars): void =
+    self.push_var_runtime(name, path, vobj)
+    self.push_repeat_var_runtime(name, vrepeat)
+
+
 proc pop_var_in_repeat_runtime(self: var TalVars, name: string): void =  # {{{1
     self.pop_repeat_var_runtime(name)
     self.pop_var_runtime(name)
@@ -210,49 +216,40 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
     case vobj.kind:
     of akString:
         var tmp = vobj.getString()
-        var (n, max) = (0, len(tmp))
-        for i in tmp:
+        let max = len(tmp)
+        for n, i in tmp:
             var j = initRepeatVars(n, max)
             var tmp = i
-            self.push_var_runtime(name, path, toAny(tmp))
-            self.push_repeat_var_runtime(name, j)
+            self.push_var_in_repeat_runtime(name, path, toAny(tmp), j)
             yield j
             self.pop_var_in_repeat_runtime(name)
-            n += 1
     of akArray, akSequence:
-        var (n, max) = (0, len(vobj))
+        let max = len(vobj)
         for i in 0 .. max - 1:
-            var j = initRepeatVars(n, max)
+            var j = initRepeatVars(i, max)
             var tmp = vobj[i]
-            self.push_var_runtime(name, path, tmp)
-            self.push_repeat_var_runtime(name, j)
+            self.push_var_in_repeat_runtime(name, path, tmp, j)
             yield j
             self.pop_var_in_repeat_runtime(name)
-            n += 1
     of akSet:
       when NimMajor > 0:
             ## todo: e.elements cause segfault
             var j = initRepeatVars(0, 1)
-            self.push_var_runtime(name, path, toAny(rt_buffer.n))
-            self.push_repeat_var_runtime(name, j)
+            rt_buffer.n = 0
+            self.push_var_in_repeat_runtime(name, path, toAny(rt_buffer.n), j)
             yield j
             self.pop_var_in_repeat_runtime(name)
       else:
-        var (n, max) = (0, 0)
-        for i in expr.elements():
-            max += 1
-        for i in expr.elements():
+        let max = len(expr.elements())
+        for n, i in expr.elements():
             var j = initRepeatVars(n, max)
             rt_buffer.n = i
-            self.push_var_runtime(name, path, toAny(rt_buffer.n))
-            self.push_repeat_var_runtime(name, j)
+            self.push_var_in_repeat_runtime(name, path, toAny(rt_buffer.n), j)
             yield j
             self.pop_var_in_repeat_runtime(name)
-            n += 1
     else:  # akObject, akTuple, ..., akInt or etc
         var j = initRepeatVars(0, 1)
-        self.push_var_runtime(name, path, vobj)
-        self.push_repeat_var_runtime(name, j)
+        self.push_var_in_repeat_runtime(name, path, vobj, j)
         yield j
         self.pop_var_in_repeat_runtime(name)
 

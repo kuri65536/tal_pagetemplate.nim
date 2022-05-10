@@ -1,6 +1,6 @@
 #[
 ## license <!-- {{{1 -->
-Copyright (c) 2020, shimoda as kuri65536 _dot_ hot mail _dot_ com
+Copyright (c) 2022, 2020, shimoda as kuri65536 _dot_ hot mail _dot_ com
                        ( email address: convert _dot_ to . and joint string )
 
 This Source Code Form is subject to the terms of the Mozilla Public License,
@@ -128,6 +128,12 @@ proc pop_repeat_var_json(self: var TalVars, name: string): void =  # {{{1
         self.root.del("reeat")
 
 
+proc push_var_in_repeat_json(self: var TalVars, name, path: string,  # {{{1
+                             jobj: JsonNode, repeat: RepeatVars): void =
+    self.push_var_json(name, path, $jobj)
+    self.push_repeat_var_json(name, repeat.make_repeatvar())
+
+
 proc pop_var_in_repeat_json(self: var TalVars, name: string): void =  # {{{1
     self.pop_repeat_var_json(name)
     self.pop_var_json(name)
@@ -138,28 +144,23 @@ iterator parse_repeat_seq_json*(self: var TalVars, name, path: string,  # {{{1
     case jobj.kind:
     of JNull, JInt, JFloat, JBool, JObject:
         var j = initRepeatVars(0, 1)
-        self.push_var_json(name, path, $jobj)
-        self.push_repeat_var_json(name, j.make_repeatvar())
+        self.push_var_in_repeat_json(name, path, jobj, j)
         yield j
         self.pop_var_in_repeat_json(name)
     of JString:
-        var (n, max) = (0, len(jobj.str))
-        for i in jobj.str:
+        let max = len(jobj.str)
+        for n, i in jobj.str:
             var j = initRepeatVars(n, max)
-            self.push_var_json(name, path, $i)
-            self.push_repeat_var_json(name, j.make_repeatvar())
+            self.push_var_in_repeat_json(name, path, jobj, j)
             yield j
             self.pop_var_in_repeat_json(name)
-            n += 1
     of JArray:
-        var (n, max) = (0, len(jobj.elems))
-        for i in jobj.elems:
+        let max = len(jobj.elems)
+        for n, i in jobj.elems:
             var j = initRepeatVars(n, max)
-            self.push_var_json(name, path, $i)
-            self.push_repeat_var_json(name, j.make_repeatvar())
+            self.push_var_in_repeat_json(name, path, i, j)
             yield j
             self.pop_var_in_repeat_json(name)
-            n += 1
 
 
 # end of file {{{1
