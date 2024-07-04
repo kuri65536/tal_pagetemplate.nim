@@ -1,6 +1,10 @@
+nimcache
 nimptal
 sample.html
+testresults
+tests/catalog/en
+tests/cmdline
+tests/megatest*
 tests/test1
 tests/test2
-tests/catalog/en
 
