@@ -11,15 +11,17 @@ You can obtain one at https://mozilla.org/MPL/2.0/.
 
 
 when true:  # TODO(shimoda): i18n macro on/off
+  import options
   import i18n
 
-  var i18n_domain_default = "default"
+  const i18n_domain_default_hard = "default"
+  var i18n_domain_default {.threadvar.}: Option[string]
 
   proc setup_i18n*(locale, encoding, domain, path: string): void =  #  # {{{1
     bindTextDomain(domain, path)
     i18n.setTextLocale(locale, encoding)
     i18n.setTextDomain(domain)
-    i18n_domain_default = domain
+    i18n_domain_default = some(domain)
 
 
   proc enter_i18n_domain*(stacks: var seq[tuple[path, domain: string]],  # {{{1
@@ -36,7 +38,7 @@ when true:  # TODO(shimoda): i18n macro on/off
     if stacks[0].path != path:
         return
     stacks.delete(0)
-    var domain = i18n_domain_default
+    var domain = i18n_domain_default.get(i18n_domain_default_hard)
     if len(stacks) > 0:
         domain = stacks[0].domain
     i18n.setTextDomain(domain)

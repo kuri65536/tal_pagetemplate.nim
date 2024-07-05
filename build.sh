@@ -12,6 +12,7 @@ function test() {
     f=another; msgfmt -o $d/$f.mo $b/$f.po
     testament pattern 'tests/*.nim'
     testament html
+    mkdir -p html
     mv -f testresults.html html
 }
 

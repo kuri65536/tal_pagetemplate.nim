@@ -26,7 +26,7 @@ type
 ]#
 
 
-proc parse_all(fp: Stream): string =  # {{{1
+proc parse_all(fp: Stream): string {.gcsafe.} =
     var path = joinPath(parentDir(currentSourcePath), "catalog")
     setup_i18n("en", "utf-8", "another", path)
     setup_i18n("en", "utf-8", "test", path)
@@ -253,4 +253,4 @@ test "T2-10-1: can parse i18n:attributes":  # {{{1
 
 
 # end of file {{{1
-# vi: ft=nim:et:ts=4:fdm=marker:nowrap
+# vi: ft=nim:et:ts=4:nowrap

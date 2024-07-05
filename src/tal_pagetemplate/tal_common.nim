@@ -20,6 +20,9 @@ import tal_i18n
 
 
 type
+  fn_convstr = proc(src: string): string {.gcsafe.}
+  fn_itervars* = iterator(): RepeatVars {.gcsafe.}
+
   Attrs* = OrderedTable[string, string]  # {{{1
 
   TagProcess* {.size: sizeof(cint).}= enum  # {{{1
@@ -62,10 +65,10 @@ type
     repeat*: TagRepeat
 
   TalExpr* = ref object of RootObj  # {{{1
-    expr_eval*: proc(expr_str: string): string
-    repeat*: proc(path, name, expr_str: string): iterator(): RepeatVars
-    defvars*: proc(expr_str, path: string): void
-    levvars*: proc(path: string): void
+    expr_eval*: proc(expr_str: string): string {.gcsafe.}
+    repeat*: proc(path, name, expr_str: string): fn_itervars {.gcsafe.}
+    defvars*: proc(expr_str, path: string): void {.gcsafe.}
+    levvars*: proc(path: string): void {.gcsafe.}
 
     stacks_i18n*: seq[tuple[path, domain: string]]
 
@@ -265,7 +268,7 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
     var attrs = attrs
 
     proc render(attr, expr_str: string, replaces: var Attrs,
-                cb: proc(src: string): string) =
+                cb: fn_convstr) =
         debg(fmt"tal:attributes -> {expr_str}")
         for src in tal_parse_multi_statements(expr_str):
             debg(fmt"tal:attributes -> {src}")
@@ -318,7 +321,8 @@ proc render_attrs*(self: TalExpr, elem, sfx: string, attrs: Attrs): string =  # 
 
 
 proc render_starttag*(self: TalExpr, path, name: string,  # {{{1
-                      attrs: var Attrs): tuple[n: set[TagProcess], d: string] =
+                      attrs: var Attrs
+                      ): tuple[n: set[TagProcess], d: string] {.gcsafe.} =
     var ret = {tag_in_notals}
     if attrs.hasKey("tal:define"):
         let expr_str = attrs["tal:define"]

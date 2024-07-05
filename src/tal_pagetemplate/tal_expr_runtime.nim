@@ -22,18 +22,30 @@ type
   runtime_null = enum
     tal_pagetemplate_invalid_indicator
 
-  runtime_buffer = object
+  runtime_buffer = ref object
     n: BiggestInt
     f: float
     s: string
 
-  runtime_repeat = object
+  runtime_repeat = ref object
     names: seq[string]
     vars: seq[RepeatVars]
 
 
-var rt_repeat = runtime_repeat(names: @[], vars: @[])
-var rt_buffer = runtime_buffer()
+var rt_buffer_var {.threadvar.}: runtime_buffer
+var rt_repeat_var {.threadvar.}: runtime_repeat
+
+
+proc get_runtime_buffer(): runtime_buffer =
+    if isNil(rt_buffer_var):
+        rt_buffer_var = runtime_buffer()
+    return rt_buffer_var
+
+
+proc get_runtime_repeat(): runtime_repeat =
+    if isNil(rt_repeat_var):
+        rt_repeat_var = runtime_repeat()
+    return rt_repeat_var
 
 
 proc make_null(): Any =  # {{{1
@@ -132,16 +144,17 @@ proc tales_path_runtime*(self: TalVars, parts: seq[string]): Any =  # {{{1
 proc tales_expr_runtime*(self: TalVars, expr: string): Any =  # {{{1
     var (ans, parts) = tales_split_path(expr)
     if len(parts) < 1:
+        let rbuf = get_runtime_buffer()
         case ans.kind:
-        of JInt:   rt_buffer.n = ans.num;  return toAny(rt_buffer.n)
-        of JFloat: rt_buffer.f = ans.fnum; return toAny(rt_buffer.f)
+        of JInt:   rbuf.n = ans.num;  return toAny(rbuf.n)
+        of JFloat: rbuf.f = ans.fnum; return toAny(rbuf.f)
         of JNull:  return make_null()
         else:      assert false
     return self.tales_path_runtime(parts)
 
 
 proc tales_meta_runtime*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
-                         ): Any =
+                         ): Any {.gcsafe.} =
     if meta == "" and len(exprs) == 1:
         return self.tales_expr_runtime(exprs[0])
 
@@ -153,8 +166,9 @@ proc tales_meta_runtime*(self: TalVars, meta: string, exprs: seq[string]  # {{{1
             n += 1
         else:
             ret &= $ch
-    rt_buffer.s = ret
-    return toAny(rt_buffer.s)
+    let rbuf = get_runtime_buffer()
+    rbuf.s = ret
+    return toAny(rbuf.s)
 
 
 proc push_var_runtime(self: var TalVars, name, path: string, vobj: Any  # {{{1
@@ -173,10 +187,11 @@ proc push_var_runtime*(self: var TalVars, name, path, expr_str: string  # {{{1
 
 proc push_repeat_var_runtime(self: var TalVars,   # {{{1
                      name: string, repeat_var: RepeatVars): void =
+    let rt_repeat = get_runtime_repeat()
     if self.root_runtime.hasKey("repeat"):
         discard
     else:
-        var tmp = toAny(rt_repeat)
+        var tmp = toAny(rt_repeat[])
         self.root_runtime["repeat"] = ("", tmp)
         rt_repeat.names = @[]
         rt_repeat.vars = @[]
@@ -193,6 +208,7 @@ proc pop_var_runtime*(self: var TalVars, name: string): void =  # {{{1
 proc pop_repeat_var_runtime*(self: var TalVars, name: string): void =  # {{{1
     if not self.root_runtime.hasKey("repeat"):
         return
+    let rt_repeat = get_runtime_repeat()
     var n = rt_repeat.names.find(name)
     if n < 0:
         return
@@ -212,7 +228,8 @@ proc pop_var_in_repeat_runtime(self: var TalVars, name: string): void =  # {{{1
 
 
 iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
-                                   name, path: string, vobj: Any): RepeatVars =
+                                   name, path: string, vobj: Any
+                                   ): RepeatVars {.gcsafe.} =
     case vobj.kind:
     of akString:
         var tmp = vobj.getString()
@@ -232,8 +249,8 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             yield j
             self.pop_var_in_repeat_runtime(name)
     of akSet:
-      when NimMajor > 0:
-            ## todo: e.elements cause segfault
+      when NimMajor == 1:
+            ## todo: e.elements cause segfaultA with nim 1.2?
             var j = initRepeatVars(0, 1)
             rt_buffer.n = 0
             self.push_var_in_repeat_runtime(name, path, toAny(rt_buffer.n), j)
@@ -245,6 +262,7 @@ iterator parse_repeat_seq_runtime*(self: var TalVars,  # {{{1
             max += 1
         for i in vobj.elements():
             var j = initRepeatVars(n, max)
+            let rt_buffer = get_runtime_buffer()
             rt_buffer.n = i
             self.push_var_in_repeat_runtime(name, path, toAny(rt_buffer.n), j)
             yield j

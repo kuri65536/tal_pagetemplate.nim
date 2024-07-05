@@ -26,6 +26,9 @@ import tal_pagetemplate/tal_expr_json
 
 
 type
+  fn_parsed_lines = iterator(): string {.gcsafe.}
+
+
   LocalParser = ref object of RootObj  # {{{1
     exprs: TalExpr
     stacks: seq[TagStack]
@@ -170,9 +173,9 @@ proc parse_tree_in_repeat(self: var LocalParser, x: XmlParser  # {{{1
     return (d, true)
 
 
-proc parse_tree(src: Stream, filename: string,  # {{{1
-                exprs: TalExpr): iterator(): string =
-    iterator ret(): string =
+proc parse_tree(src: Stream, filename: string,
+                exprs: TalExpr): fn_parsed_lines =
+    iterator ret(): string {.gcsafe.} =
         var parser = LocalParser(exprs: exprs)
         var x: XmlParser
         open(x, src, "", {reportWhitespace, reportComments})
@@ -211,18 +214,18 @@ proc parse_tree(src: Stream, filename: string,  # {{{1
 
 
 proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
-                     ): iterator(): string =
+                     ): fn_parsed_lines =
     var vars_expr: TalExpr
     var vars_tal = TalVars(f_json: true,
             root: initTable[string, tuple[path: string, obj: JsonNode]]())
     for name, fld in vars.getFields():
         vars_tal.root[name] = ("", fld)
 
-    proc parser_json(expr_str: string): string =
+    proc parser_json(expr_str: string): string {.gcsafe.} =
         return vars_tal.tales_parse(expr_str)
 
     proc parser_json_repeat(path, name, expr_str: string
-                            ): iterator(): RepeatVars =
+                            ): fn_itervars =
         var (meta, exprs) = vars_tal.tales_parse_meta(expr_str)
         debg(fmt"rep-json: {meta}->{exprs}")
         var e = vars_tal.tales_meta_json(meta, exprs)
@@ -249,7 +252,7 @@ proc parse_template*(src: Stream, filename: string, vars: JsonNode  # {{{1
 
 
 proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
-                     ): iterator(): string =
+                     ): fn_parsed_lines =
     var vars_expr: TalExpr
     var vars_tal = TalVars(f_json: false,
             root_runtime: initTable[string, tuple[path: string, obj: Any]]())
@@ -259,7 +262,7 @@ proc parse_template*(src: Stream, filename: string, vars: Any  # {{{1
         return vars_tal.tales_parse(expr_str)
 
     proc parser_rtti_repeat(path, name, expr_str: string
-                            ): iterator(): RepeatVars =
+                            ): fn_itervars =
         var (meta, exprs) = vars_tal.tales_parse_meta(expr_str)
         debg(fmt"rep-json: {meta}->{exprs}")
         var e = vars_tal.tales_meta_runtime(meta, exprs)

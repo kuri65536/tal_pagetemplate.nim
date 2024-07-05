@@ -19,7 +19,7 @@ import ./tal_expr_json
 import ./tal_expr_runtime
 
 
-proc tales_parse*(self: TalVars, src: string): string
+proc tales_parse*(self: TalVars, src: string): string {.gcsafe.}
 
 
 proc parse_expr_exists(self: TalVars, src: string, f_not: bool  # {{{1
@@ -123,7 +123,7 @@ proc tales_parse_meta*(self: TalVars, src: string  # {{{1
     return ("", @[src0])
 
 
-proc tales_parse*(self: TalVars, src: string): string =  # {{{1
+proc tales_parse*(self: TalVars, src: string): string {.gcsafe.} =
     var (meta, exprs) = self.tales_parse_meta(src)
     if self.f_json:
         var tmp = self.tales_meta_json(meta, exprs)

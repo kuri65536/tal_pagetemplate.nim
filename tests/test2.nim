@@ -19,7 +19,7 @@ import tal_pagetemplate
 import tal_pagetemplate/tal_i18n
 
 
-proc parse_all(fp: Stream): string =  # {{{1
+proc parse_all(fp: Stream): string {.gcsafe.} =
     var path = joinPath(parentDir(currentSourcePath), "catalog")
     setup_i18n("en", "utf-8", "test", path)
 
@@ -51,7 +51,7 @@ proc parse_all(fp: Stream): string =  # {{{1
     return ret
 
 
-proc parse_all2(fp: Stream, vars: Any): string =  # {{{1
+proc parse_all2(fp: Stream, vars: Any): string {.gcsafe.} =
     var path = joinPath(parentDir(currentSourcePath), "catalog")
     setup_i18n("en", "utf-8", "test", path)
 
@@ -310,4 +310,4 @@ test "T4-6-2: use nim rtti - invalid properties":  # {{{1
 
 
 # end of file {{{1
-# vi: ft=nim:et:ts=4:fdm=marker:nowrap
+# vi: ft=nim:et:ts=4:nowrap
