@@ -1,3 +1,4 @@
+html
 nimcache
 nimptal
 sample.html
@@ -8,3 +9,5 @@ tests/megatest*
 tests/test1
 tests/test2
 
+nimble.develop
+nimble.paths

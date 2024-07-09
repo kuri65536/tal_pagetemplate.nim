@@ -6,54 +6,65 @@ name: CI
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ main ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ main ]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    branches: [ "main" ]
+env:
+  nimlatest: "2.0.4"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "build"
   build:
+    strategy:
+      matrix:
+        nimver: ["2.0.4"]
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+    - name: install gettext
+      run: |
+          sudo apt-get update
+          sudo apt-get -y install gettext
 
-      - name: install gettext
-        id: install-gettext
-        run: |
-          sudo apt install gettext
+    - uses: iffy/install-nim@v5
+      with:
+        version: ${{ matrix.nimver }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Cache choosenim
-        id: cache-choosenim
-        uses: actions/cache@v1
-        with:
-          path: ~/.choosenim
-          key: ${{ runner.os }}-choosenim-0.19.4
+    - uses: actions/cache@v4
+      with:
+        path: /usr/bin
+        key:  ${{ runner.os }}-build-${{ hashFiles('nim') }}
 
-      - name: Cache nimble
-        id: cache-nimble
-        uses: actions/cache@v1
-        with:
-          path: ~/.nimble
-          key: ${{ runner.os }}-nimble-0.19.4
-      - name: Install Nim
-        if: steps.cache-choosenim.outputs.cache-hit != 'true' || steps.cache-nimble.outputs.cache-hit != 'true'
-        run: |
-          export CHOOSENIM_CHOOSE_VERSION="0.19.4"
-          curl https://nim-lang.org/choosenim/init.sh -sSf > init.sh
-          sh init.sh -y
-      - name: Test project
-        run: |
-          export PATH=$HOME/.nimble/bin:$PATH
-          echo $PATH
-          make catalogs
-          nimble install https://github.com/kuri65536/nim-i18n
-          echo yes | nimble test
+    - name: prepare the i18n library
+      run:  nimble setup -y
+
+    - name: prepare the i18n data
+      run:  bash build.sh pre-test
+
+    - name: run with testament
+      run:  testament pattern 'tests/**/*.nim'
+
+    - name: results with testament
+      run:  |
+            testament html
+            mkdir -p html
+            mv testresults.html html/testresults-${{matrix.nimver}}.html
+
+    - name: make documents
+      if:   ${{ matrix.nimver == env.nimlatest }}
+      run:  bash build.sh doc
+
+    - name: deploy to github pages
+      uses: peaceiris/actions-gh-pages@v3
+      if:   ${{ matrix.nimver == env.nimlatest }}
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir:  ./html
 
