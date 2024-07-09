@@ -1,7 +1,0 @@
-nimTitle	tal_expr	tal_pagetemplate/tal_expr.html	module src/tal_pagetemplate/tal_expr		0
-nim	tales_parse	tal_pagetemplate/tal_expr.html#tales_parse,TalVars,string	proc tales_parse(self: TalVars; src: string): string		22
-nim	tales_parse_meta	tal_pagetemplate/tal_expr.html#tales_parse_meta,TalVars,string	proc tales_parse_meta(self: TalVars; src: string): tuple[meta: string,\n    exprs: seq[string]]		97
-nim	pop_var	tal_pagetemplate/tal_expr.html#pop_var,TalVars,string	proc pop_var(self: var TalVars; name: string): void		149
-nim	parse_define	tal_pagetemplate/tal_expr.html#parse_define,TalExpr,TalVars,string,string	proc parse_define(self: var TalExpr; vars: var TalVars; expr, path: string): void		156
-nim	leave_define	tal_pagetemplate/tal_expr.html#leave_define,Table[string,tuple[string,T]],string	proc leave_define[T](tbl: Table[string, tuple[path: string, obj: T]]; path: string): seq[\n    string]		179
-nim	parse_attributes	tal_pagetemplate/tal_expr.html#parse_attributes,TalVars,string	proc parse_attributes(self: TalVars; src: string): Table[string, string]		192

@@ -1,5 +1,0 @@
-nimTitle	tal_i18n	tal_pagetemplate/tal_i18n.html	module src/tal_pagetemplate/tal_i18n		0
-nim	setup_i18n	tal_pagetemplate/tal_i18n.html#setup_i18n,string,string,string,string	proc setup_i18n(locale, encoding, domain, path: string): void		20
-nim	enter_i18n_domain	tal_pagetemplate/tal_i18n.html#enter_i18n_domain,seq[tuple[string,string]],string,string	proc enter_i18n_domain(stacks: var seq[tuple[path, domain: string]];\n                  path, domain: string): void		27
-nim	leave_i18n_domain	tal_pagetemplate/tal_i18n.html#leave_i18n_domain,seq[tuple[string,string]],string	proc leave_i18n_domain(stacks: var seq[tuple[path, domain: string]]; path: string): void		34
-nim	render_i18n_trans	tal_pagetemplate/tal_i18n.html#render_i18n_trans,string	proc render_i18n_trans(src: string): string		47

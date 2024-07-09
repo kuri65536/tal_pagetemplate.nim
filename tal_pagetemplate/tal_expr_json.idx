@@ -1,8 +1,0 @@
-nimTitle	tal_expr_json	tal_pagetemplate/tal_expr_json.html	module src/tal_pagetemplate/tal_expr_json		0
-nim	json_to_string	tal_pagetemplate/tal_expr_json.html#json_to_string,JsonNode	proc json_to_string(self: JsonNode): string		18
-nim	make_bool	tal_pagetemplate/tal_expr_json.html#make_bool,bool	proc make_bool(src: bool): string		26
-nim	tales_meta_json	tal_pagetemplate/tal_expr_json.html#tales_meta_json,TalVars,string,seq[string]	proc tales_meta_json(self: TalVars; meta: string; exprs: seq[string]): JsonNode		81
-nim	push_var_json	tal_pagetemplate/tal_expr_json.html#push_var_json,TalVars,string,string,string	proc push_var_json(self: var TalVars; name, path, vobj: string): void		97
-nim	push_repeat_var_json	tal_pagetemplate/tal_expr_json.html#push_repeat_var_json,TalVars,string,JsonNode	proc push_repeat_var_json(self: var TalVars; name: string; repeat_var: JsonNode): void		103
-nim	pop_var_json	tal_pagetemplate/tal_expr_json.html#pop_var_json,TalVars,string	proc pop_var_json(self: var TalVars; name: string): void		114
-nim	parse_repeat_seq_json	tal_pagetemplate/tal_expr_json.html#parse_repeat_seq_json.i,TalVars,string,string,JsonNode	iterator parse_repeat_seq_json(self: var TalVars; name, path: string; jobj: JsonNode): RepeatVars		142
