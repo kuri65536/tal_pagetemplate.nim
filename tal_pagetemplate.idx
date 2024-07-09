@@ -1,0 +1,4 @@
+nimTitle	tal_pagetemplate	tal_pagetemplate.html	module src/tal_pagetemplate		0
+nim	parse_template	tal_pagetemplate.html#parse_template,Stream,string,JsonNode	proc parse_template(src: Stream; filename: string; vars: JsonNode): fn_parsed_lines		216
+nim	parse_template	tal_pagetemplate.html#parse_template,Stream,string,Any	proc parse_template(src: Stream; filename: string; vars: Any): fn_parsed_lines		254
+nimgrp	parsetemplate	tal_pagetemplate.html#parse_template-procs-all	proc		216

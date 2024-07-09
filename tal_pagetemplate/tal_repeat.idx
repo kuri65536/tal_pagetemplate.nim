@@ -1,0 +1,3 @@
+nimTitle	tal_repeat	tal_pagetemplate/tal_repeat.html	module src/tal_pagetemplate/tal_repeat		0
+nim	initTagRepeat	tal_pagetemplate/tal_repeat.html#initTagRepeat,string,string,string,string,Attrs,TalExpr	proc initTagRepeat(elem, path, name, expr_str: string; attrs: Attrs; exprs: TalExpr): TagRepeat		19
+nim	parse_tree	tal_pagetemplate/tal_repeat.html#parse_tree,TagRepeat,XmlParser	proc parse_tree(self: var TagRepeat; x: XmlParser): tuple[d: string, f: bool]		139

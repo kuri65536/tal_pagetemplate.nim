@@ -1,0 +1,10 @@
+nimTitle	tal_expr_runtime	tal_pagetemplate/tal_expr_runtime.html	module src/tal_pagetemplate/tal_expr_runtime		0
+nim	any_serialize	tal_pagetemplate/tal_expr_runtime.html#any_serialize,Any	proc any_serialize(self: Any): string		56
+nim	tales_path_runtime	tal_pagetemplate/tal_expr_runtime.html#tales_path_runtime,TalVars,seq[string]	proc tales_path_runtime(self: TalVars; parts: seq[string]): Any		134
+nim	tales_expr_runtime	tal_pagetemplate/tal_expr_runtime.html#tales_expr_runtime,TalVars,string	proc tales_expr_runtime(self: TalVars; expr: string): Any		144
+nim	tales_meta_runtime	tal_pagetemplate/tal_expr_runtime.html#tales_meta_runtime,TalVars,string,seq[string]	proc tales_meta_runtime(self: TalVars; meta: string; exprs: seq[string]): Any		156
+nim	push_var_runtime	tal_pagetemplate/tal_expr_runtime.html#push_var_runtime,TalVars,string,string,string	proc push_var_runtime(self: var TalVars; name, path, expr_str: string): void		180
+nim	pop_var_runtime	tal_pagetemplate/tal_expr_runtime.html#pop_var_runtime,TalVars,string	proc pop_var_runtime(self: var TalVars; name: string): void		202
+nim	pop_repeat_var_runtime	tal_pagetemplate/tal_expr_runtime.html#pop_repeat_var_runtime,TalVars,string	proc pop_repeat_var_runtime(self: var TalVars; name: string): void		208
+nim	parse_repeat_seq_runtime	tal_pagetemplate/tal_expr_runtime.html#parse_repeat_seq_runtime.i,TalVars,string,string,Any	iterator parse_repeat_seq_runtime(self: var TalVars; name, path: string; vobj: Any): RepeatVars		230
+nim	copy_from	tal_pagetemplate/tal_expr_runtime.html#copy_from,Table[string,tuple[string,Any]],Any	proc copy_from(self: var Table[string, tuple[path: string, obj: Any]]; vars: Any): void		278

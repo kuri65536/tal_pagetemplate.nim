@@ -1,0 +1,28 @@
+nimTitle	tal_common	tal_pagetemplate/tal_common.html	module src/tal_pagetemplate/tal_common		0
+nim	fn_itervars	tal_pagetemplate/tal_common.html#fn_itervars	type fn_itervars		24
+nim	Attrs	tal_pagetemplate/tal_common.html#Attrs	type Attrs		26
+nim	TagProcess	tal_pagetemplate/tal_common.html#TagProcess	enum TagProcess		28
+nim	RepeatStatus	tal_pagetemplate/tal_common.html#RepeatStatus	type RepeatStatus		38
+nim	RepeatVars	tal_pagetemplate/tal_common.html#RepeatVars	type RepeatVars		41
+nim	TagRepeat0	tal_pagetemplate/tal_common.html#TagRepeat0	type TagRepeat0		48
+nim	TagRepeat	tal_pagetemplate/tal_common.html#TagRepeat	type TagRepeat		52
+nim	TagStack	tal_pagetemplate/tal_common.html#TagStack	type TagStack		61
+nim	TalExpr	tal_pagetemplate/tal_common.html#TalExpr	type TalExpr		67
+nim	TalVars	tal_pagetemplate/tal_common.html#TalVars	type TalVars		75
+nim	newAttrs	tal_pagetemplate/tal_common.html#newAttrs	proc newAttrs(): Attrs		81
+nim	debg	tal_pagetemplate/tal_common.html#debg,string	proc debg(msg: string): void		85
+nim	tal_repeat_romans	tal_pagetemplate/tal_common.html#tal_repeat_romans,int	proc tal_repeat_romans(n: int): string		89
+nim	tal_repeat_letters	tal_pagetemplate/tal_common.html#tal_repeat_letters,int	proc tal_repeat_letters(n: int): string		109
+nim	initRepeatVars	tal_pagetemplate/tal_common.html#initRepeatVars,int,int	proc initRepeatVars(n, max: int): RepeatVars		121
+nim	tales_bool_expr	tal_pagetemplate/tal_common.html#tales_bool_expr,string	proc tales_bool_expr(src: string): bool		134
+nim	tales_split_path	tal_pagetemplate/tal_common.html#tales_split_path,string	proc tales_split_path(src: string): tuple[ans: JsonNode, parts: seq[string]]		175
+nim	tal_parse_multi_statements	tal_pagetemplate/tal_common.html#tal_parse_multi_statements.i,string	iterator tal_parse_multi_statements(src: string): string		211
+nim	render_endtag	tal_pagetemplate/tal_common.html#render_endtag,string	proc render_endtag(src: string): string		232
+nim	render_cdata	tal_pagetemplate/tal_common.html#render_cdata,string	proc render_cdata(src: string): string		236
+nim	render_comment	tal_pagetemplate/tal_common.html#render_comment,string	proc render_comment(src: string): string		240
+nim	render_entity	tal_pagetemplate/tal_common.html#render_entity,string	proc render_entity(src: string): string		244
+nim	render_pi	tal_pagetemplate/tal_common.html#render_pi,string,string	proc render_pi(name, rest: string): string		248
+nim	render_special	tal_pagetemplate/tal_common.html#render_special,string	proc render_special(src: string): string		252
+nim	xml_path	tal_pagetemplate/tal_common.html#xml_path,seq[TagStack]	proc xml_path(src: seq[TagStack]): string		256
+nim	render_attrs	tal_pagetemplate/tal_common.html#render_attrs,TalExpr,string,string,Attrs	proc render_attrs(self: TalExpr; elem, sfx: string; attrs: Attrs): string		263
+nim	render_starttag	tal_pagetemplate/tal_common.html#render_starttag,TalExpr,string,string,Attrs	proc render_starttag(self: TalExpr; path, name: string; attrs: var Attrs): tuple[\n    n: set[TagProcess], d: string]		323
